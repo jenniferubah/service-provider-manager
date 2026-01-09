@@ -72,7 +72,7 @@ check-aep:
 	spectral lint --fail-severity=warn ./api/v1alpha1/openapi.yaml
 	spectral lint --fail-severity=warn ./api/v1alpha1/resource_manager/openapi.yaml
 
-COVER_PKGS := ./internal/store/...,./internal/config/...,./internal/api_server/...
+COVER_PKGS := ./internal/store/...,./internal/config/...,./internal/api_server/...,./internal/service/...,./internal/handlers/...
 
 test-coverage:
 	go run github.com/onsi/ginkgo/v2/ginkgo -r --randomize-all --cover --coverpkg=$(COVER_PKGS) --coverprofile=coverage.out
