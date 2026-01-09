@@ -1,14 +1,2 @@
 extends:
   - https://raw.githubusercontent.com/aep-dev/aep-openapi-linter/main/spectral.yaml
-
-# /health is an infrastructure endpoint, not a business resource.
-# AEP collection rules don't apply to it.
-overrides:
-  - files:
-      - "**#/paths/~1health"
-    rules:
-      aep-158-max-page-size-parameter: off
-      aep-158-page-token-parameter: off
-      aep-132-operation-id: off
-      aep-158-response-array-property: off
-      aep-158-response-next-page-token-property: off
