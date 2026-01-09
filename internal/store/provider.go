@@ -29,6 +29,7 @@ type Provider interface {
 	Update(ctx context.Context, provider model.Provider) (*model.Provider, error)
 	Get(ctx context.Context, id uuid.UUID) (*model.Provider, error)
 	GetByName(ctx context.Context, name string) (*model.Provider, error)
+	ExistsByID(ctx context.Context, id uuid.UUID) (bool, error)
 }
 
 type ProviderStore struct {
@@ -109,4 +110,16 @@ func (s *ProviderStore) GetByName(ctx context.Context, name string) (*model.Prov
 		return nil, err
 	}
 	return &provider, nil
+}
+
+func (s *ProviderStore) ExistsByID(ctx context.Context, id uuid.UUID) (bool, error) {
+	var provider model.Provider
+	err := s.db.WithContext(ctx).Select("id").Where(&model.Provider{ID: id}).Take(&provider).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
