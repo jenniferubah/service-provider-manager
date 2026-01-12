@@ -106,20 +106,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProviderRegistration'
+              $ref: '#/components/schemas/Provider'
       responses:
         '200':
           description: Provider updated (re-registration)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProviderResponse'
+                $ref: '#/components/schemas/Provider'
         '201':
           description: Provider created (new registration)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProviderResponse'
+                $ref: '#/components/schemas/Provider'
         '400':
           description: Invalid input
           content:
@@ -278,62 +278,6 @@ paths:
 
 components:
   schemas:
-    ProviderRegistration:
-      type: object
-      description: Registration payload for a service provider
-      x-aep-resource: true
-      required:
-        - name
-        - endpoint
-        - service_type
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: |
-            Optional unique identifier for the Service Provider.
-            If not provided, DCM will generate one automatically.
-          example: "123e4567-e89b-12d3-a456-426614174000"
-        path:
-          type: string
-          description: Resource path identifier
-          example: "providers/123e4567-e89b-12d3-a456-426614174000"
-        name:
-          type: string
-          description: |
-            Unique name of the Service Provider.
-            Used as the natural key for matching existing registrations.
-          example: "kubevirt-123"
-        display_name:
-          type: string
-          description: Human-readable display name for the provider
-          example: "KubeVirt Service Provider"
-        endpoint:
-          type: string
-          format: uri
-          description: Full endpoint URL where the provider API is accessible
-          example: "https://sp1.example.com/api/v1/vm"
-        service_type:
-          type: string
-          description: |
-            Type of service this provider offers.
-            Each provider registration is per service type.
-          example: "vm"
-          enum:
-            - vm
-            - database
-            - container
-            - storage
-            - pod
-        operations:
-          type: array
-          items:
-            type: string
-          description: List of operations supported for this service type
-          example: ["create", "delete", "update"]
-        metadata:
-          $ref: '#/components/schemas/ProviderMetadata'
-
     ProviderMetadata:
       type: object
       description: Additional metadata about the provider
@@ -379,7 +323,6 @@ components:
       description: Full provider resource representation
       x-aep-resource: true
       required:
-        - id
         - name
         - endpoint
         - service_type
@@ -424,6 +367,13 @@ components:
           example: ["create", "delete", "update"]
         metadata:
           $ref: '#/components/schemas/ProviderMetadata'
+        status:
+          type: string
+          description: Registration status
+          enum:
+            - registered
+            - updated
+          example: "registered"
         create_time:
           type: string
           format: date-time
@@ -432,33 +382,6 @@ components:
           type: string
           format: date-time
           description: Timestamp when the provider was last updated
-
-    ProviderResponse:
-      type: object
-      description: Response payload after provider registration
-      x-aep-resource: true
-      required:
-        - id
-        - status
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Unique identifier for the Service Provider
-          example: "123e4567-e89b-12d3-a456-426614174000"
-        path:
-          type: string
-          description: Resource path identifier
-          example: "providers/123e4567-e89b-12d3-a456-426614174000"
-        status:
-          type: string
-          description: Registration status
-          enum:
-            - registered
-            - updated
-          example: "registered"
-        provider:
-          $ref: '#/components/schemas/Provider'
 
     ProviderList:
       type: object
