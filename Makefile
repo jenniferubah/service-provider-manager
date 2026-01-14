@@ -1,4 +1,4 @@
-BINARY_NAME := service-provider-api
+BINARY_NAME := service-provider-manager
 
 build:
 	go build -o bin/$(BINARY_NAME) ./cmd/$(BINARY_NAME)
