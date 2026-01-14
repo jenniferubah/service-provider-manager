@@ -370,6 +370,7 @@ components:
           $ref: '#/components/schemas/ProviderMetadata'
         status:
           type: string
+          readOnly: true
           description: Registration status
           enum:
             - registered
@@ -378,10 +379,12 @@ components:
         create_time:
           type: string
           format: date-time
+          readOnly: true
           description: Timestamp when the provider was first registered
         update_time:
           type: string
           format: date-time
+          readOnly: true
           description: Timestamp when the provider was last updated
 
     ProviderList:
