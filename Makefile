@@ -53,6 +53,6 @@ check-generate-api: generate-api
 
 # Check AEP compliance
 check-aep:
-	spectral lint ./api/v1alpha1/openapi.yaml
+	spectral lint --fail-severity=warn ./api/v1alpha1/openapi.yaml
 
 .PHONY: build run clean fmt vet test tidy generate-types generate-spec generate-server generate-client generate-api check-generate-api check-aep
