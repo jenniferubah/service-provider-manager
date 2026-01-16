@@ -12,7 +12,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 
 servers:
-  - url: /api/v1
+  - url: /api/v1alpha1
 
 tags:
   - name: provider
@@ -356,7 +356,7 @@ components:
           type: string
           format: uri
           description: Full endpoint URL where the provider API is accessible
-          example: "https://sp1.example.com/api/v1/vm"
+          example: "https://sp1.example.com/api/v1alpha1/vm"
         service_type:
           type: string
           description: Type of service this provider offers

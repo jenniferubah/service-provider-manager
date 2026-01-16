@@ -13,7 +13,7 @@ import (
 	"net/url"
 	"strings"
 
-	. "github.com/dcm-project/service-provider-api/api/v1alpha1"
+	. "github.com/dcm-project/service-provider-manager/api/v1alpha1"
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
