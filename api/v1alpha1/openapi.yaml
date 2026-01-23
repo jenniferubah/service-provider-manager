@@ -332,6 +332,7 @@ components:
         - name
         - endpoint
         - service_type
+        - schema_version
       properties:
         id:
           type: string
@@ -361,6 +362,11 @@ components:
           type: string
           description: Type of service this provider offers
           example: "vm"
+        schema_version:
+          type: string
+          description: Schema version of the service type the SP supports
+          pattern: "^v[0-9]+(alpha|beta)?[0-9]*$"
+          example: "v1alpha1"
         operations:
           type: array
           items:
