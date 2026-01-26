@@ -56,6 +56,10 @@ generate-client:
 		--config=pkg/client/client.gen.cfg \
 		-o pkg/client/client.gen.go \
 		api/v1alpha1/openapi.yaml
+	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen \
+		--config=pkg/client/resource_manager/client.gen.cfg \
+		-o pkg/client/resource_manager/client.gen.go \
+		api/v1alpha1/resource_manager/openapi.yaml
 
 generate-api: generate-types generate-spec generate-server generate-client
 
