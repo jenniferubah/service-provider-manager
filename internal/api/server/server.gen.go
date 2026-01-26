@@ -75,6 +75,9 @@ type Provider struct {
 	// Path Resource path identifier
 	Path *string `json:"path,omitempty"`
 
+	// SchemaVersion Schema version of the service type the SP supports
+	SchemaVersion string `json:"schema_version"`
+
 	// ServiceType Type of service this provider offers
 	ServiceType string `json:"service_type"`
 

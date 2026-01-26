@@ -1,6 +1,8 @@
 package config
 
 import (
+	"log"
+
 	"github.com/kelseyhightower/envconfig"
 )
 
@@ -27,6 +29,10 @@ func Load() (*Config, error) {
 	cfg := &Config{}
 	if err := envconfig.Process("", cfg); err != nil {
 		return nil, err
+	}
+	if cfg.Database.Type != "pgsql" && cfg.Database.Type != "sqlite" {
+		log.Printf("WARNING: invalid DB_TYPE %q, defaulting to sqlite", cfg.Database.Type)
+		cfg.Database.Type = "sqlite"
 	}
 	return cfg, nil
 }
