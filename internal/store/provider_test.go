@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"time"
 
 	"github.com/dcm-project/service-provider-manager/internal/store"
 	"github.com/dcm-project/service-provider-manager/internal/store/model"
@@ -236,6 +237,167 @@ var _ = Describe("Provider Store", func() {
 		It("returns ErrProviderNotFound for non-existing provider", func() {
 			p := newProvider("non-existing")
 			_, err := providerStore.Update(ctx, p)
+
+			Expect(err).To(Equal(store.ErrProviderNotFound))
+		})
+	})
+
+	Describe("ListProvidersForHealthCheck", func() {
+		It("returns providers with null next_health_check", func() {
+			p := newProvider("null-next-check")
+			p.NextHealthCheck = nil
+			providerStore.Create(ctx, p)
+
+			now := time.Now()
+			providers, err := providerStore.ListProvidersForHealthCheck(ctx, now)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(providers).To(HaveLen(1))
+			Expect(providers[0].Name).To(Equal("null-next-check"))
+		})
+
+		It("returns providers with next_health_check in the past", func() {
+			p := newProvider("past-check")
+			pastTime := time.Now().Add(-1 * time.Hour)
+			p.NextHealthCheck = &pastTime
+			providerStore.Create(ctx, p)
+
+			now := time.Now()
+			providers, err := providerStore.ListProvidersForHealthCheck(ctx, now)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(providers).To(HaveLen(1))
+			Expect(providers[0].Name).To(Equal("past-check"))
+		})
+
+		It("returns providers with next_health_check equal to now", func() {
+			now := time.Now()
+			p := newProvider("equal-check")
+			p.NextHealthCheck = &now
+			providerStore.Create(ctx, p)
+
+			providers, err := providerStore.ListProvidersForHealthCheck(ctx, now)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(providers).To(HaveLen(1))
+			Expect(providers[0].Name).To(Equal("equal-check"))
+		})
+
+		It("excludes providers with next_health_check in the future", func() {
+			p := newProvider("future-check")
+			futureTime := time.Now().Add(1 * time.Hour)
+			p.NextHealthCheck = &futureTime
+			providerStore.Create(ctx, p)
+
+			now := time.Now()
+			providers, err := providerStore.ListProvidersForHealthCheck(ctx, now)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(providers).To(BeEmpty())
+		})
+
+		It("returns empty list when no providers are due", func() {
+			p := newProvider("not-due")
+			futureTime := time.Now().Add(24 * time.Hour)
+			p.NextHealthCheck = &futureTime
+			providerStore.Create(ctx, p)
+
+			now := time.Now()
+			providers, err := providerStore.ListProvidersForHealthCheck(ctx, now)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(providers).To(BeEmpty())
+		})
+
+		It("returns multiple providers due for health check", func() {
+			p1 := newProvider("due-1")
+			p1.NextHealthCheck = nil
+			providerStore.Create(ctx, p1)
+
+			p2 := newProvider("due-2")
+			pastTime := time.Now().Add(-30 * time.Minute)
+			p2.NextHealthCheck = &pastTime
+			providerStore.Create(ctx, p2)
+
+			p3 := newProvider("not-due")
+			futureTime := time.Now().Add(1 * time.Hour)
+			p3.NextHealthCheck = &futureTime
+			providerStore.Create(ctx, p3)
+
+			now := time.Now()
+			providers, err := providerStore.ListProvidersForHealthCheck(ctx, now)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(providers).To(HaveLen(2))
+		})
+	})
+
+	Describe("UpdateHealthStatus", func() {
+		It("updates health status to not_ready", func() {
+			p := newProvider("health-update")
+			providerStore.Create(ctx, p)
+
+			nextCheck := time.Now().Add(1 * time.Hour)
+			err := providerStore.UpdateHealthStatus(ctx, p.ID, model.HealthStatusNotReady, 3, nextCheck)
+
+			Expect(err).NotTo(HaveOccurred())
+
+			updated, err := providerStore.Get(ctx, p.ID)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(updated.HealthStatus).To(Equal(model.HealthStatusNotReady))
+			Expect(updated.ConsecutiveFailures).To(Equal(3))
+			Expect(updated.NextHealthCheck).NotTo(BeNil())
+		})
+
+		It("updates health status to ready", func() {
+			p := newProvider("health-ready")
+			p.HealthStatus = model.HealthStatusNotReady
+			p.ConsecutiveFailures = 5
+			providerStore.Create(ctx, p)
+
+			nextCheck := time.Now().Add(10 * time.Second)
+			err := providerStore.UpdateHealthStatus(ctx, p.ID, model.HealthStatusReady, 0, nextCheck)
+
+			Expect(err).NotTo(HaveOccurred())
+
+			updated, err := providerStore.Get(ctx, p.ID)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(updated.HealthStatus).To(Equal(model.HealthStatusReady))
+			Expect(updated.ConsecutiveFailures).To(Equal(0))
+		})
+
+		It("updates consecutive failures count", func() {
+			p := newProvider("failure-count")
+			providerStore.Create(ctx, p)
+
+			nextCheck := time.Now().Add(30 * time.Second)
+			err := providerStore.UpdateHealthStatus(ctx, p.ID, model.HealthStatusReady, 2, nextCheck)
+
+			Expect(err).NotTo(HaveOccurred())
+
+			updated, err := providerStore.Get(ctx, p.ID)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(updated.ConsecutiveFailures).To(Equal(2))
+		})
+
+		It("updates next health check time", func() {
+			p := newProvider("next-check-update")
+			providerStore.Create(ctx, p)
+
+			nextCheck := time.Now().Add(5 * time.Minute)
+			err := providerStore.UpdateHealthStatus(ctx, p.ID, model.HealthStatusReady, 0, nextCheck)
+
+			Expect(err).NotTo(HaveOccurred())
+
+			updated, err := providerStore.Get(ctx, p.ID)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(updated.NextHealthCheck).NotTo(BeNil())
+			Expect(updated.NextHealthCheck.Unix()).To(Equal(nextCheck.Unix()))
+		})
+
+		It("returns ErrProviderNotFound for missing ID", func() {
+			nextCheck := time.Now().Add(1 * time.Hour)
+			err := providerStore.UpdateHealthStatus(ctx, uuid.New(), model.HealthStatusReady, 0, nextCheck)
 
 			Expect(err).To(Equal(store.ErrProviderNotFound))
 		})

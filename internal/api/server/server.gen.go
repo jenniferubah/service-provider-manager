@@ -60,6 +60,9 @@ type Provider struct {
 	// Endpoint Full endpoint URL where the provider API is accessible
 	Endpoint string `json:"endpoint"`
 
+	// HealthStatus Health status of the provider
+	HealthStatus *string `json:"health_status,omitempty"`
+
 	// Id Unique identifier for the Service Provider
 	Id *openapi_types.UUID `json:"id,omitempty"`
 

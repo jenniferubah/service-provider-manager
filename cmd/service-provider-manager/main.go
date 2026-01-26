@@ -11,6 +11,7 @@ import (
 	apiserver "github.com/dcm-project/service-provider-manager/internal/api_server"
 	"github.com/dcm-project/service-provider-manager/internal/config"
 	"github.com/dcm-project/service-provider-manager/internal/handlers"
+	"github.com/dcm-project/service-provider-manager/internal/healthcheck"
 	"github.com/dcm-project/service-provider-manager/internal/service"
 	"github.com/dcm-project/service-provider-manager/internal/store"
 )
@@ -44,6 +45,12 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
+	// Start health check monitor
+	healthMonitor := healthcheck.NewMonitor(dataStore.Provider(), cfg.HealthCheck)
+	healthMonitor.Start(ctx)
+	defer healthMonitor.Stop()
+	log.Printf("Health check monitor started (interval: 10s)")
 
 	log.Printf("Starting server on %s", listener.Addr().String())
 	if err := srv.Run(ctx); err != nil {

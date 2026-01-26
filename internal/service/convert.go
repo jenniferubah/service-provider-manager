@@ -18,6 +18,7 @@ func ModelToProvider(m *model.Provider) *server.Provider {
 		ServiceType:   m.ServiceType,
 		SchemaVersion: m.SchemaVersion,
 		Endpoint:      m.Endpoint,
+		HealthStatus:  m.HealthStatus.StringPtr(),
 		CreateTime:    ptrTime(m.CreateTime),
 		UpdateTime:    ptrTime(m.UpdateTime),
 	}

@@ -383,6 +383,11 @@ components:
             - registered
             - updated
           example: "registered"
+        health_status:
+          type: string
+          description: Health status of the provider
+          example: "ready"
+          readOnly: true
         create_time:
           type: string
           format: date-time

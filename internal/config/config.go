@@ -2,13 +2,23 @@ package config
 
 import (
 	"log"
+	"time"
 
 	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
-	Database *DBConfig
-	Service  *ServiceConfig
+	Database    *DBConfig
+	Service     *ServiceConfig
+	HealthCheck *HealthCheckConfig
+}
+
+type HealthCheckConfig struct {
+	Interval               time.Duration `envconfig:"HEALTH_CHECK_INTERVAL" default:"10s"`
+	Timeout                time.Duration `envconfig:"HEALTH_CHECK_TIMEOUT" default:"5s"`
+	MaxConsecutiveFailures int           `envconfig:"HEALTH_CHECK_MAX_CONSECUTIVE_FAILURES" default:"3"`
+	BaseBackoffInterval    time.Duration `envconfig:"HEALTH_CHECK_BASE_BACKOFF_INTERVAL" default:"10s"`
+	MaxBackoffInterval     time.Duration `envconfig:"HEALTH_CHECK_MAX_BACKOFF_INTERVAL" default:"5m"`
 }
 
 type DBConfig struct {
