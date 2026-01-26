@@ -1,4 +1,4 @@
-.PHONY: build run clean fmt vet test test-coverage tidy generate-types generate-spec generate-server generate-client generate-api check-aep check-generate-api
+.PHONY: build run clean fmt vet test test-e2e e2e-up e2e-down test-e2e-full test-coverage tidy generate-types generate-spec generate-server generate-client generate-api check-aep check-generate-api
 
 BINARY_NAME := service-provider-manager
 
@@ -18,7 +18,23 @@ vet:
 	go vet ./...
 
 test:
-	go run github.com/onsi/ginkgo/v2/ginkgo -r --randomize-all --fail-on-pending
+	go run github.com/onsi/ginkgo/v2/ginkgo -r --randomize-all --fail-on-pending --skip-package=e2e
+
+test-e2e:
+	@curl -sf http://localhost:8080/api/v1alpha1/health > /dev/null || \
+		(echo "Error: Service not running. Start with 'make e2e-up' first." && exit 1)
+	go run github.com/onsi/ginkgo/v2/ginkgo -r -v --tags=e2e ./test/e2e/...
+
+e2e-up:
+	podman-compose up -d --build
+	@echo "Waiting for services to be healthy..."
+	@until curl -sf http://localhost:8080/api/v1alpha1/health > /dev/null 2>&1; do sleep 1; done
+	@echo "Services ready."
+
+e2e-down:
+	podman-compose down -v
+
+test-e2e-full: e2e-up test-e2e e2e-down
 
 tidy:
 	go mod tidy
