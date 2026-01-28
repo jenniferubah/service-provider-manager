@@ -4,14 +4,15 @@ import (
 	"context"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/dcm-project/service-provider-manager/internal/api/server"
 	apiserver "github.com/dcm-project/service-provider-manager/internal/api_server"
 	"github.com/dcm-project/service-provider-manager/internal/config"
+	"github.com/dcm-project/service-provider-manager/internal/handlers"
+	"github.com/dcm-project/service-provider-manager/internal/service"
+	"github.com/dcm-project/service-provider-manager/internal/store"
 )
 
 func main() {
@@ -20,13 +21,24 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
+	// Initialize database
+	db, err := store.InitDB(cfg)
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+
+	// Initialize store, service, and handler
+	dataStore := store.NewStore(db)
+	defer dataStore.Close()
+
+	providerService := service.NewProviderService(dataStore)
+	handler := handlers.NewHandler(providerService)
+
+	// Start server
 	listener, err := net.Listen("tcp", cfg.Service.Address)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
-
-	// TODO: Replace with real handler implementation
-	handler := &stubHandler{}
 
 	srv := apiserver.New(cfg, listener, handler)
 
@@ -38,61 +50,3 @@ func main() {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
-
-// stubHandler implements server.StrictServerInterface with stub responses
-type stubHandler struct{}
-
-func (s *stubHandler) GetHealth(ctx context.Context, request server.GetHealthRequestObject) (server.GetHealthResponseObject, error) {
-	return server.GetHealth200JSONResponse{Status: ptr("ok")}, nil
-}
-
-func (s *stubHandler) ListProviders(ctx context.Context, request server.ListProvidersRequestObject) (server.ListProvidersResponseObject, error) {
-	return notImplemented(), nil
-}
-
-func (s *stubHandler) CreateProvider(ctx context.Context, request server.CreateProviderRequestObject) (server.CreateProviderResponseObject, error) {
-	return notImplemented(), nil
-}
-
-func (s *stubHandler) DeleteProvider(ctx context.Context, request server.DeleteProviderRequestObject) (server.DeleteProviderResponseObject, error) {
-	return notImplemented(), nil
-}
-
-func (s *stubHandler) GetProvider(ctx context.Context, request server.GetProviderRequestObject) (server.GetProviderResponseObject, error) {
-	return notImplemented(), nil
-}
-
-func (s *stubHandler) ApplyProvider(ctx context.Context, request server.ApplyProviderRequestObject) (server.ApplyProviderResponseObject, error) {
-	return notImplemented(), nil
-}
-
-func ptr(s string) *string { return &s }
-
-type notImplementedResponse struct{}
-
-func (notImplementedResponse) VisitListProvidersResponse(w http.ResponseWriter) error {
-	w.WriteHeader(http.StatusNotImplemented)
-	return nil
-}
-
-func (notImplementedResponse) VisitCreateProviderResponse(w http.ResponseWriter) error {
-	w.WriteHeader(http.StatusNotImplemented)
-	return nil
-}
-
-func (notImplementedResponse) VisitDeleteProviderResponse(w http.ResponseWriter) error {
-	w.WriteHeader(http.StatusNotImplemented)
-	return nil
-}
-
-func (notImplementedResponse) VisitGetProviderResponse(w http.ResponseWriter) error {
-	w.WriteHeader(http.StatusNotImplemented)
-	return nil
-}
-
-func (notImplementedResponse) VisitApplyProviderResponse(w http.ResponseWriter) error {
-	w.WriteHeader(http.StatusNotImplemented)
-	return nil
-}
-
-func notImplemented() notImplementedResponse { return notImplementedResponse{} }

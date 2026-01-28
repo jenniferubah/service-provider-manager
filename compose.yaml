@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_DB: service-provider
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d service-provider"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  service-provider-manager:
+    build:
+      context: .
+      dockerfile: Containerfile
+    environment:
+      DB_TYPE: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: service-provider
+      DB_USER: admin
+      DB_PASS: adminpass
+      SVC_ADDRESS: ":8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1alpha1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

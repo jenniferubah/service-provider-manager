@@ -16,8 +16,8 @@ type DBConfig struct {
 	Hostname string `envconfig:"DB_HOST" default:"localhost"`
 	Port     string `envconfig:"DB_PORT" default:"5432"`
 	Name     string `envconfig:"DB_NAME" default:"service-provider"`
-	User     string `envconfig:"DB_USER" default:"admin"`
-	Password string `envconfig:"DB_PASS" default:"adminpass"`
+	User     string `envconfig:"DB_USER"`
+	Password string `envconfig:"DB_PASS"`
 }
 
 type ServiceConfig struct {

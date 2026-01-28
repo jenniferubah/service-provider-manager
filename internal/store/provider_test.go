@@ -100,7 +100,7 @@ var _ = Describe("Provider Store", func() {
 			providerStore.Create(ctx, newProvider("p1"))
 			providerStore.Create(ctx, newProvider("p2"))
 
-			providers, err := providerStore.List(ctx, nil)
+			providers, err := providerStore.List(ctx, nil, nil)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(providers).To(HaveLen(2))
@@ -116,7 +116,7 @@ var _ = Describe("Provider Store", func() {
 			providerStore.Create(ctx, p2)
 
 			vmType := "vm"
-			vms, err := providerStore.List(ctx, &store.ProviderFilter{ServiceType: &vmType})
+			vms, err := providerStore.List(ctx, &store.ProviderFilter{ServiceType: &vmType}, nil)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(vms).To(HaveLen(1))
@@ -128,7 +128,7 @@ var _ = Describe("Provider Store", func() {
 			providerStore.Create(ctx, newProvider("not-me"))
 
 			name := "find-me"
-			providers, err := providerStore.List(ctx, &store.ProviderFilter{Name: &name})
+			providers, err := providerStore.List(ctx, &store.ProviderFilter{Name: &name}, nil)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(providers).To(HaveLen(1))
@@ -146,11 +146,61 @@ var _ = Describe("Provider Store", func() {
 
 			name := "vm-one"
 			vmType := "vm"
-			providers, err := providerStore.List(ctx, &store.ProviderFilter{Name: &name, ServiceType: &vmType})
+			providers, err := providerStore.List(ctx, &store.ProviderFilter{Name: &name, ServiceType: &vmType}, nil)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(providers).To(HaveLen(1))
 			Expect(providers[0].Name).To(Equal("vm-one"))
+		})
+
+		It("respects pagination limit", func() {
+			providerStore.Create(ctx, newProvider("page-p1"))
+			providerStore.Create(ctx, newProvider("page-p2"))
+			providerStore.Create(ctx, newProvider("page-p3"))
+
+			providers, err := providerStore.List(ctx, nil, &store.Pagination{Limit: 2, Offset: 0})
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(providers).To(HaveLen(2))
+		})
+
+		It("respects pagination offset", func() {
+			providerStore.Create(ctx, newProvider("offset-p1"))
+			providerStore.Create(ctx, newProvider("offset-p2"))
+			providerStore.Create(ctx, newProvider("offset-p3"))
+
+			providers, err := providerStore.List(ctx, nil, &store.Pagination{Limit: 10, Offset: 2})
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(providers).To(HaveLen(1))
+		})
+	})
+
+	Describe("Count", func() {
+		It("returns total count without filter", func() {
+			providerStore.Create(ctx, newProvider("count-p1"))
+			providerStore.Create(ctx, newProvider("count-p2"))
+
+			count, err := providerStore.Count(ctx, nil)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(count).To(Equal(int64(2)))
+		})
+
+		It("returns filtered count", func() {
+			p1 := newProvider("count-vm")
+			p1.ServiceType = "vm"
+			providerStore.Create(ctx, p1)
+
+			p2 := newProvider("count-container")
+			p2.ServiceType = "container"
+			providerStore.Create(ctx, p2)
+
+			vmType := "vm"
+			count, err := providerStore.Count(ctx, &store.ProviderFilter{ServiceType: &vmType})
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(count).To(Equal(int64(1)))
 		})
 	})
 
