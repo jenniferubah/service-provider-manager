@@ -44,6 +44,16 @@ make test-e2e     # E2E tests (requires running services)
 | PUT | `/api/v1alpha1/providers/{id}` | Update provider |
 | DELETE | `/api/v1alpha1/providers/{id}` | Delete provider |
 
+### Client Library
+
+A Go client library is available for Service Providers to integrate with DCM:
+
+```bash
+go get github.com/dcm-project/service-provider-manager/pkg/client
+```
+
+See [pkg/client/README.md](pkg/client/README.md) for usage examples.
+
 ### Configuration
 
 Environment variables:
