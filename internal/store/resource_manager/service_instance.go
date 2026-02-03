@@ -18,7 +18,6 @@ var (
 // nil fields are ignored (not filtered).
 type ServiceTypeInstanceFilter struct {
 	ProviderName *string
-	ServiceType  *string
 }
 
 // Pagination contains options for paginated queries.
@@ -55,9 +54,6 @@ func (s *ServiceTypeInstanceStore) List(
 	if filter != nil {
 		if filter.ProviderName != nil {
 			query = query.Where(&model.ServiceTypeInstance{ProviderName: *filter.ProviderName})
-		}
-		if filter.ServiceType != nil {
-			query = query.Where(&model.ServiceTypeInstance{ServiceType: *filter.ServiceType})
 		}
 	}
 

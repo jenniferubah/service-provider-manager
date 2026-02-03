@@ -14,12 +14,11 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func newServiceTypeInstance(providerName, serviceType, instanceName string, spec any) model.ServiceTypeInstance {
+func newServiceTypeInstance(providerName, instanceName string, spec any) model.ServiceTypeInstance {
 	jsonSpec, _ := json.Marshal(spec)
 	return model.ServiceTypeInstance{
 		ID:           uuid.New(),
 		ProviderName: providerName,
-		ServiceType:  serviceType,
 		Status:       "PROVISIONING",
 		InstanceName: instanceName,
 		Spec:         jsonSpec,
@@ -28,7 +27,6 @@ func newServiceTypeInstance(providerName, serviceType, instanceName string, spec
 
 var (
 	kubevirtProvider = "kubevirt-sp"
-	vmServiceType    = "vm"
 )
 
 var _ = Describe("ServiceTypeInstance Store", func() {
@@ -66,7 +64,6 @@ var _ = Describe("ServiceTypeInstance Store", func() {
 		It("persists the instance", func() {
 			instance := newServiceTypeInstance(
 				kubevirtProvider,
-				vmServiceType,
 				"instance-1",
 				map[string]any{"cpu": 2})
 			created, err := s.Create(ctx, instance)
@@ -78,7 +75,7 @@ var _ = Describe("ServiceTypeInstance Store", func() {
 
 	Describe("Get", func() {
 		It("retrieves by ID", func() {
-			seeded := newServiceTypeInstance(kubevirtProvider, vmServiceType, "get-inst", map[string]any{"cpu": 1})
+			seeded := newServiceTypeInstance(kubevirtProvider, "get-inst", map[string]any{"cpu": 1})
 			addInstanceToStore(seeded)
 
 			found, err := s.Get(ctx, seeded.ID)
@@ -87,7 +84,6 @@ var _ = Describe("ServiceTypeInstance Store", func() {
 			Expect(found).NotTo(BeNil())
 			Expect(found.ProviderName).To(Equal(kubevirtProvider))
 			Expect(found.InstanceName).To(Equal("get-inst"))
-			Expect(found.ServiceType).To(Equal(vmServiceType))
 		})
 
 		It("returns ErrInstanceNotFound for missing ID", func() {
@@ -98,9 +94,9 @@ var _ = Describe("ServiceTypeInstance Store", func() {
 
 	Describe("List", func() {
 		BeforeEach(func() {
-			addInstanceToStore(newServiceTypeInstance(kubevirtProvider, vmServiceType, "instance1", map[string]any{}))
-			addInstanceToStore(newServiceTypeInstance(kubevirtProvider, vmServiceType, "instance2", map[string]any{}))
-			addInstanceToStore(newServiceTypeInstance(kubevirtProvider, "container", "instance3", map[string]any{}))
+			addInstanceToStore(newServiceTypeInstance(kubevirtProvider, "instance1", map[string]any{}))
+			addInstanceToStore(newServiceTypeInstance(kubevirtProvider, "instance2", map[string]any{}))
+			addInstanceToStore(newServiceTypeInstance(kubevirtProvider, "instance3", map[string]any{}))
 		})
 
 		It("returns all instances when filter is nil", func() {
@@ -113,12 +109,6 @@ var _ = Describe("ServiceTypeInstance Store", func() {
 			instances, err := s.List(ctx, &rmstore.ServiceTypeInstanceFilter{ProviderName: &kubevirtProvider}, nil)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(instances).To(HaveLen(3))
-		})
-
-		It("filters by service type", func() {
-			instances, err := s.List(ctx, &rmstore.ServiceTypeInstanceFilter{ServiceType: &vmServiceType}, nil)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(instances).To(HaveLen(2))
 		})
 
 		It("applies pagination limit/offset", func() {
@@ -134,7 +124,7 @@ var _ = Describe("ServiceTypeInstance Store", func() {
 
 	Describe("Delete", func() {
 		It("removes the instance", func() {
-			instance := newServiceTypeInstance(kubevirtProvider, vmServiceType, "to-delete", map[string]any{})
+			instance := newServiceTypeInstance(kubevirtProvider, "to-delete", map[string]any{})
 			addInstanceToStore(instance)
 
 			Expect(s.Delete(ctx, instance.ID)).To(Succeed())
@@ -151,7 +141,7 @@ var _ = Describe("ServiceTypeInstance Store", func() {
 
 	Describe("ExistsByID", func() {
 		It("returns true when instance exists", func() {
-			instance := newServiceTypeInstance(kubevirtProvider, vmServiceType, "exists", map[string]any{})
+			instance := newServiceTypeInstance(kubevirtProvider, "exists", map[string]any{})
 			addInstanceToStore(instance)
 
 			exists, err := s.ExistsByID(ctx, instance.ID)
