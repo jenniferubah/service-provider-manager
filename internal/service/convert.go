@@ -19,8 +19,8 @@ func ModelToProvider(m *model.Provider) *server.Provider {
 		SchemaVersion: m.SchemaVersion,
 		Endpoint:      m.Endpoint,
 		HealthStatus:  m.HealthStatus.StringPtr(),
-		CreateTime:    ptrTime(m.CreateTime),
-		UpdateTime:    ptrTime(m.UpdateTime),
+		CreateTime:    PtrTime(m.CreateTime),
+		UpdateTime:    PtrTime(m.UpdateTime),
 	}
 }
 
@@ -47,7 +47,7 @@ func ProviderToModel(req *server.Provider, id uuid.UUID) model.Provider {
 
 // Helper functions for pointer conversions
 
-func ptrTime(t time.Time) *time.Time {
+func PtrTime(t time.Time) *time.Time {
 	if t.IsZero() {
 		return nil
 	}

@@ -176,7 +176,7 @@ func (s *ProviderService) ListProviders(ctx context.Context, serviceType string,
 	// Decode page token to get offset
 	offset := 0
 	if pageToken != "" {
-		decoded, err := decodePageToken(pageToken)
+		decoded, err := DecodePageToken(pageToken)
 		if err != nil {
 			return nil, &ServiceError{Code: ErrCodeValidation, Message: "invalid page_token"}
 		}
@@ -225,7 +225,7 @@ func encodePageToken(offset int) string {
 	return base64.StdEncoding.EncodeToString([]byte(strconv.Itoa(offset)))
 }
 
-func decodePageToken(token string) (int, error) {
+func DecodePageToken(token string) (int, error) {
 	decoded, err := base64.StdEncoding.DecodeString(token)
 	if err != nil {
 		return 0, err
