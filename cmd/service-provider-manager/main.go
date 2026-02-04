@@ -11,8 +11,10 @@ import (
 	apiserver "github.com/dcm-project/service-provider-manager/internal/api_server"
 	"github.com/dcm-project/service-provider-manager/internal/config"
 	"github.com/dcm-project/service-provider-manager/internal/handlers"
+	rmhandlers "github.com/dcm-project/service-provider-manager/internal/handlers/resource_manager"
 	"github.com/dcm-project/service-provider-manager/internal/healthcheck"
 	"github.com/dcm-project/service-provider-manager/internal/service"
+	rmsvc "github.com/dcm-project/service-provider-manager/internal/service/resource_manager"
 	"github.com/dcm-project/service-provider-manager/internal/store"
 )
 
@@ -32,8 +34,13 @@ func main() {
 	dataStore := store.NewStore(db)
 	defer dataStore.Close()
 
+	// Provider API
 	providerService := service.NewProviderService(dataStore)
-	handler := handlers.NewHandler(providerService)
+	providerHandler := handlers.NewHandler(providerService)
+
+	// Resource Manager API
+	instanceService := rmsvc.NewInstanceService(dataStore)
+	rmHandler := rmhandlers.NewHandler(instanceService)
 
 	// Start server
 	listener, err := net.Listen("tcp", cfg.Service.Address)
@@ -41,7 +48,7 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	srv := apiserver.New(cfg, listener, handler)
+	srv := apiserver.New(cfg, listener, providerHandler, rmHandler)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
