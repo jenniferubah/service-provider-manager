@@ -10,7 +10,6 @@ func convertServerToAPI(src *server.ServiceTypeInstance) *resource_manager.Servi
 	return &resource_manager.ServiceTypeInstance{
 		Id:           src.Id,
 		ProviderName: src.ProviderName,
-		ServiceType:  src.ServiceType,
 		Spec:         src.Spec,
 	}
 }
@@ -21,7 +20,6 @@ func convertAPIToServer(src *resource_manager.ServiceTypeInstance) server.Servic
 		Id:           src.Id,
 		Path:         src.Path,
 		ProviderName: src.ProviderName,
-		ServiceType:  src.ServiceType,
 		Spec:         src.Spec,
 		CreateTime:   src.CreateTime,
 		UpdateTime:   src.UpdateTime,

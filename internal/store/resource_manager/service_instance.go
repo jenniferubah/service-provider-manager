@@ -104,7 +104,7 @@ func (s *ServiceTypeInstanceStore) ExistsByID(ctx context.Context, id uuid.UUID)
 	err := s.db.WithContext(ctx).Select("id").Where(&model.ServiceTypeInstance{ID: id}).Take(&instance).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, ErrInstanceNotFound
+			return false, nil
 		}
 		return false, err
 	}

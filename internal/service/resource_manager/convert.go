@@ -16,20 +16,20 @@ type ProviderResponse struct {
 }
 
 // ModelToAPI converts a database model to an API response type.
-func ModelToAPI(m *model.ServiceTypeInstance, providerResponse *ProviderResponse) *resource_manager.ServiceTypeInstance {
-	id := m.ID.String()
+func ModelToAPI(instance *model.ServiceTypeInstance) *resource_manager.ServiceTypeInstance {
+	id := instance.ID.String()
 	path := fmt.Sprintf("service-type-instances/%s", id)
 
 	var spec map[string]interface{}
-	_ = json.Unmarshal(m.Spec, &spec)
+	_ = json.Unmarshal(instance.Spec, &spec)
 
 	return &resource_manager.ServiceTypeInstance{
 		Id:           &id,
 		Path:         &path,
-		ProviderName: m.ProviderName,
-		ServiceType:  m.ServiceType,
+		ProviderName: instance.ProviderName,
+		Status:       &instance.Status,
 		Spec:         spec,
-		CreateTime:   service.PtrTime(m.CreateTime),
-		UpdateTime:   service.PtrTime(m.UpdateTime),
+		CreateTime:   service.PtrTime(instance.CreateTime),
+		UpdateTime:   service.PtrTime(instance.UpdateTime),
 	}
 }

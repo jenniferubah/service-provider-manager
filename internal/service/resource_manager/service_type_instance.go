@@ -50,6 +50,14 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 		return nil, err
 	}
 
+	// Check Provider if provider is not in ready state
+	if provider.HealthStatus != model.HealthStatusReady {
+		return nil, &service.ServiceError{
+			Code:    service.ErrCodeProviderError,
+			Message: fmt.Sprintf("provider is not in ready state: %v", err),
+		}
+	}
+
 	// Resolve instance ID
 	instanceID, err := s.resolveInstanceID(ctx, queryID)
 	if err != nil {
@@ -68,14 +76,16 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 	// Send request to provider endpoint
 	providerResponse, err := s.sendToProvider(ctx, provider.Endpoint, request)
 	if err != nil {
-		return nil, err
+		return nil, &service.ServiceError{
+			Code:    service.ErrCodeProviderError,
+			Message: fmt.Sprintf("Error from Provider (%s): %v", providerName, err),
+		}
 	}
 
-	// Create instance in database - use provider's service type
+	// Create instance in database
 	instance := model.ServiceTypeInstance{
 		ID:           instanceID,
 		ProviderName: providerName,
-		ServiceType:  provider.ServiceType,
 		Status:       providerResponse.Status,
 		Spec:         datatypes.JSON(specJSON),
 	}
@@ -88,7 +98,7 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 	log.Printf("Created instance: %s for provider: %s", created.ID, providerName)
 
 	// Return the created instance, merging any provider response data
-	return ModelToAPI(created, providerResponse), nil
+	return ModelToAPI(created), nil
 }
 
 // GetInstance retrieves an instance by ID
@@ -112,14 +122,14 @@ func (s *InstanceService) GetInstance(ctx context.Context, instanceID string) (*
 		return nil, err
 	}
 
-	return ModelToAPI(instance, nil), nil
+	return ModelToAPI(instance), nil
 }
 
 // ListInstances returns instances with optional filtering and pagination
-func (s *InstanceService) ListInstances(ctx context.Context, serviceType *string, maxPageSize *int, pageToken string) (*resource_manager.ServiceTypeInstanceList, error) {
+func (s *InstanceService) ListInstances(ctx context.Context, providerName *string, maxPageSize *int, pageToken string) (*resource_manager.ServiceTypeInstanceList, error) {
 	var filter *rmstore.ServiceTypeInstanceFilter
-	if serviceType != nil && *serviceType != "" {
-		filter = &rmstore.ServiceTypeInstanceFilter{ServiceType: serviceType}
+	if providerName != nil && *providerName != "" {
+		filter = &rmstore.ServiceTypeInstanceFilter{ProviderName: providerName}
 	}
 
 	// Apply pagination
@@ -148,7 +158,7 @@ func (s *InstanceService) ListInstances(ctx context.Context, serviceType *string
 	// Convert to API types
 	result := make([]resource_manager.ServiceTypeInstance, len(instances))
 	for i, inst := range instances {
-		result[i] = *ModelToAPI(&inst, nil)
+		result[i] = *ModelToAPI(&inst)
 	}
 
 	return &resource_manager.ServiceTypeInstanceList{
@@ -234,7 +244,9 @@ func (s *InstanceService) resolveInstanceID(ctx context.Context, queryID *string
 
 // sendToProvider sends the create request to the provider's endpoint
 func (s *InstanceService) sendToProvider(ctx context.Context, endpoint string, request *resource_manager.ServiceTypeInstance) (*ProviderResponse, error) {
+
 	var providerResp ProviderResponse
+
 	resp, err := s.httpClient.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
