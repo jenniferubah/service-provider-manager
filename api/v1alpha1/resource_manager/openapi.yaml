@@ -244,6 +244,11 @@ components:
           type: string
           description: Name of the provider
           example: "kubevirt-123"
+        status:
+          type: string
+          readOnly: true
+          description: Status of the instance
+          example: "READY"
         spec:
           type: object
           description: |

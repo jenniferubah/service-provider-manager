@@ -60,6 +60,9 @@ type ServiceTypeInstance struct {
 	// schemas (VMSpec, ContainerSpec, DatabaseSpec, or ClusterSpec).
 	Spec map[string]interface{} `json:"spec"`
 
+	// Status Status of the instance
+	Status *string `json:"status,omitempty"`
+
 	// UpdateTime Timestamp when the instance was last updated
 	UpdateTime *time.Time `json:"update_time,omitempty"`
 }
