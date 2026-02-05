@@ -55,7 +55,7 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(100)
 
 	// Auto-migrate schema
-	if err := db.AutoMigrate(&model.Provider{}); err != nil {
+	if err := db.AutoMigrate(&model.Provider{}, &model.ServiceTypeInstance{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
