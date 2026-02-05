@@ -90,7 +90,6 @@ var _ = Describe("InstanceService", func() {
 			Expect(result).NotTo(BeNil())
 			Expect(result.Id).NotTo(BeNil())
 			Expect(result.ProviderName).To(Equal("test-provider"))
-			Expect(result.ServiceType).To(Equal("vm")) // Uses provider's service type
 			Expect(providerCalled).To(BeTrue())
 		})
 

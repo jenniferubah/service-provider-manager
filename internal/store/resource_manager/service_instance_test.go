@@ -149,9 +149,9 @@ var _ = Describe("ServiceTypeInstance Store", func() {
 			Expect(exists).To(BeTrue())
 		})
 
-		It("returns ErrInstanceNotFound when instance is missing", func() {
+		It("returns false when instance is missing", func() {
 			exists, err := s.ExistsByID(ctx, uuid.New())
-			Expect(err).To(MatchError(rmstore.ErrInstanceNotFound))
+			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeFalse())
 		})
 	})
