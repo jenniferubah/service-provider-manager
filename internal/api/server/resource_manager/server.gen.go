@@ -56,9 +56,6 @@ type ServiceTypeInstance struct {
 	// ProviderName Name of the provider
 	ProviderName string `json:"provider_name"`
 
-	// ServiceType Service type of the instance
-	ServiceType string `json:"service_type"`
-
 	// Spec Service specification following one of the supported service type
 	// schemas (VMSpec, ContainerSpec, DatabaseSpec, or ClusterSpec).
 	Spec map[string]interface{} `json:"spec"`

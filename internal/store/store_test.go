@@ -29,6 +29,15 @@ var _ = Describe("Store", func() {
 		})
 	})
 
+	Describe("NewStore", func() {
+		It("creates a store with service type instance access", func() {
+			s := store.NewStore(db)
+
+			Expect(s).NotTo(BeNil())
+			Expect(s.ServiceTypeInstance()).NotTo(BeNil())
+		})
+	})
+
 	Describe("Close", func() {
 		It("closes the database connection", func() {
 			s := store.NewStore(db)

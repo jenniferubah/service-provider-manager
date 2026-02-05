@@ -224,7 +224,6 @@ components:
         patterns:
           - service-type-instances/{instance_id}
       required:
-        - service_type
         - provider_name
         - spec
       properties:
@@ -241,10 +240,6 @@ components:
           readOnly: true
           description: Resource path identifier
           example: "service-type-instance/123e4567-e89b-12d3-a456-426614174000"
-        service_type:
-          type: string
-          description: Service type of the instance
-          example: "vm"
         provider_name:
           type: string
           description: Name of the provider
