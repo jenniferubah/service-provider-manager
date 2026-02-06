@@ -37,7 +37,7 @@ func handleCreateInstanceError(err error) server.CreateInstanceResponseObject {
 		case service.ErrCodeValidation:
 			return server.CreateInstance400ApplicationProblemPlusJSONResponse(newError("validation-error", "Validation failed", svcErr.Message, 400))
 		case service.ErrCodeNotFound:
-			return server.CreateInstance400ApplicationProblemPlusJSONResponse(newError("not-found", "Resource not found", svcErr.Message, 400))
+			return server.CreateInstance404ApplicationProblemPlusJSONResponse(newError("not-found", "Resource not found", svcErr.Message, 400))
 		case service.ErrCodeConflict:
 			return server.CreateInstance409ApplicationProblemPlusJSONResponse(newError("conflict", "Resource conflict", svcErr.Message, 409))
 		case service.ErrCodeProviderError:
