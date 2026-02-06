@@ -54,7 +54,7 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 	if provider.HealthStatus != model.HealthStatusReady {
 		return nil, &service.ServiceError{
 			Code:    service.ErrCodeProviderError,
-			Message: fmt.Sprintf("provider is not in ready state: %v", err),
+			Message: fmt.Sprintf("provider '%s' is not in ready state (current status: %s)", providerName, provider.HealthStatus),
 		}
 	}
 
@@ -81,6 +81,7 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 			Message: fmt.Sprintf("Error from Provider (%s): %v", providerName, err),
 		}
 	}
+	log.Printf("Created instance: %s for provider: %s", providerResponse.ID, providerName)
 
 	// Create instance in database
 	instance := model.ServiceTypeInstance{
@@ -92,12 +93,13 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 
 	created, err := s.store.ServiceTypeInstance().Create(ctx, instance)
 	if err != nil {
+		// add re-try mechanism
 		return nil, err
 	}
 
-	log.Printf("Created instance: %s for provider: %s", created.ID, providerName)
+	log.Printf("Inserted instance into DB: %s", created.ID)
 
-	// Return the created instance, merging any provider response data
+	// Return the created instance
 	return ModelToAPI(created), nil
 }
 
@@ -198,18 +200,25 @@ func (s *InstanceService) DeleteInstance(ctx context.Context, instanceID string)
 	if provider != nil {
 		err = s.sendDeleteToProvider(ctx, provider.Endpoint, instanceID)
 		if err != nil {
-			// Log error but continue with local deletion
-			log.Printf("Warning: failed to delete instance %s from provider: %v", instanceID, err)
+			log.Printf("Error: failed to delete instance (%s) from provider (%s): %v", instanceID, provider.Name, err)
+			if errors.Is(err, rmstore.ErrInstanceNotFound) {
+				return &service.ServiceError{
+					Code:    service.ErrCodeProviderError,
+					Message: fmt.Sprintf("failed to delete instance (%s): %v", instanceID, err),
+				}
+			}
 		}
+		log.Printf("Deleted instance (%s) from SP (%s)", instanceID, provider.Name)
 	}
 
 	// Delete from database
 	err = s.store.ServiceTypeInstance().Delete(ctx, id)
 	if err != nil {
+		// add re-try mechanism
 		return err
 	}
 
-	log.Printf("Deleted instance: %s", instanceID)
+	log.Printf("Deleted instance from DB record: %s", instanceID)
 	return nil
 }
 
