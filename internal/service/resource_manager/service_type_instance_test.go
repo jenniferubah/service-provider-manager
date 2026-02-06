@@ -59,11 +59,11 @@ var _ = Describe("InstanceService", func() {
 
 		// Create a provider in the database
 		provider := model.Provider{
-			ID:            uuid.New(),
-			Name:          "test-provider",
-			ServiceType:   "vm",
-			Endpoint:      mockProvider.URL,
-			SchemaVersion: "v1alpha1",
+			ID:           uuid.New(),
+			Name:         "test-provider",
+			ServiceType:  "vm",
+			Endpoint:     mockProvider.URL,
+			HealthStatus: model.HealthStatusReady,
 		}
 		Expect(db.Create(&provider).Error).NotTo(HaveOccurred())
 
@@ -142,6 +142,32 @@ var _ = Describe("InstanceService", func() {
 			Expect(svcErr.Code).To(Equal(service.ErrCodeNotFound))
 		})
 
+		It("returns provider error when provider exists but is not ready", func() {
+			// Create a provider with HealthStatus = NotReady
+			notReadyProvider := model.Provider{
+				ID:           uuid.New(),
+				Name:         "not-ready-provider",
+				ServiceType:  "vm",
+				Endpoint:     mockProvider.URL,
+				HealthStatus: model.HealthStatusNotReady,
+			}
+			Expect(db.Create(&notReadyProvider).Error).NotTo(HaveOccurred())
+
+			req := &resource_manager.ServiceTypeInstance{
+				ProviderName: "not-ready-provider",
+				Spec:         map[string]interface{}{"cpu": 1},
+			}
+
+			_, err := instanceService.CreateInstance(ctx, req, nil)
+
+			Expect(err).To(HaveOccurred())
+			var svcErr *service.ServiceError
+			Expect(err).To(BeAssignableToTypeOf(svcErr))
+			errors.As(err, &svcErr)
+			Expect(svcErr.Code).To(Equal(service.ErrCodeProviderError))
+			Expect(svcErr.Message).To(ContainSubstring("not in ready state"))
+		})
+
 		It("returns validation error for invalid ID format", func() {
 			invalidID := "not-a-uuid"
 			req := &resource_manager.ServiceTypeInstance{
@@ -161,11 +187,10 @@ var _ = Describe("InstanceService", func() {
 		It("returns provider error when provider endpoint fails", func() {
 			// Create a provider with a bad endpoint
 			badProvider := model.Provider{
-				ID:            uuid.New(),
-				Name:          "bad-provider",
-				ServiceType:   "vm",
-				Endpoint:      "http://localhost:1", // Invalid port
-				SchemaVersion: "v1alpha1",
+				ID:          uuid.New(),
+				Name:        "bad-provider",
+				ServiceType: "vm",
+				Endpoint:    "http://localhost:1", // Invalid port
 			}
 			Expect(db.Create(&badProvider).Error).NotTo(HaveOccurred())
 
@@ -181,6 +206,116 @@ var _ = Describe("InstanceService", func() {
 			Expect(err).To(BeAssignableToTypeOf(svcErr))
 			errors.As(err, &svcErr)
 			Expect(svcErr.Code).To(Equal(service.ErrCodeProviderError))
+		})
+
+		It("returns provider error when provider responds with 4xx HTTP error", func() {
+			// Create a mock server that returns 400
+			mockProvider4xx := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(`{"error": "bad request"}`))
+			}))
+			defer mockProvider4xx.Close()
+
+			provider4xx := model.Provider{
+				ID:           uuid.New(),
+				Name:         "provider-4xx",
+				ServiceType:  "vm",
+				Endpoint:     mockProvider4xx.URL,
+				HealthStatus: model.HealthStatusReady,
+			}
+			Expect(db.Create(&provider4xx).Error).NotTo(HaveOccurred())
+
+			req := &resource_manager.ServiceTypeInstance{
+				ProviderName: "provider-4xx",
+				Spec:         map[string]interface{}{"cpu": 1},
+			}
+
+			_, err := instanceService.CreateInstance(ctx, req, nil)
+
+			Expect(err).To(HaveOccurred())
+			var svcErr *service.ServiceError
+			Expect(err).To(BeAssignableToTypeOf(svcErr))
+			errors.As(err, &svcErr)
+			Expect(svcErr.Code).To(Equal(service.ErrCodeProviderError))
+			Expect(svcErr.Message).To(ContainSubstring("provider returned error"))
+		})
+
+		It("returns provider error when provider responds with 5xx HTTP error", func() {
+			// Create a mock server that returns 500
+			mockProvider5xx := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"error": "internal server error"}`))
+			}))
+			defer mockProvider5xx.Close()
+
+			provider5xx := model.Provider{
+				ID:           uuid.New(),
+				Name:         "provider-5xx",
+				ServiceType:  "vm",
+				Endpoint:     mockProvider5xx.URL,
+				HealthStatus: model.HealthStatusReady,
+			}
+			Expect(db.Create(&provider5xx).Error).NotTo(HaveOccurred())
+
+			req := &resource_manager.ServiceTypeInstance{
+				ProviderName: "provider-5xx",
+				Spec:         map[string]interface{}{"cpu": 1},
+			}
+
+			_, err := instanceService.CreateInstance(ctx, req, nil)
+
+			Expect(err).To(HaveOccurred())
+			var svcErr *service.ServiceError
+			Expect(err).To(BeAssignableToTypeOf(svcErr))
+			errors.As(err, &svcErr)
+			Expect(svcErr.Code).To(Equal(service.ErrCodeProviderError))
+			Expect(svcErr.Message).To(ContainSubstring("provider returned error"))
+		})
+
+		It("returns internal error with instance ID when DB insert fails", func() {
+			var instanceID string
+			var providerCallCount int
+			mockProviderWithID := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				providerCallCount++
+				instanceID = uuid.New().String()
+
+				if providerCallCount == 1 {
+					sqlDB, _ := db.DB()
+					sqlDB.Close()
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(map[string]string{
+					"id":     instanceID,
+					"status": "PROVISIONING",
+				})
+			}))
+			defer mockProviderWithID.Close()
+
+			providerWithID := model.Provider{
+				ID:           uuid.New(),
+				Name:         "provider-db-fail",
+				ServiceType:  "vm",
+				Endpoint:     mockProviderWithID.URL,
+				HealthStatus: model.HealthStatusReady,
+			}
+			Expect(db.Create(&providerWithID).Error).NotTo(HaveOccurred())
+
+			req := &resource_manager.ServiceTypeInstance{
+				ProviderName: "provider-db-fail",
+				Spec:         map[string]interface{}{"cpu": 2},
+			}
+
+			_, err := instanceService.CreateInstance(ctx, req, nil)
+
+			Expect(err).To(HaveOccurred())
+			var svcErr *service.ServiceError
+			Expect(err).To(BeAssignableToTypeOf(svcErr))
+			errors.As(err, &svcErr)
+			Expect(svcErr.Code).To(Equal(service.ErrCodeInternal))
+			Expect(svcErr.Message).To(ContainSubstring("failed to create database record"))
+			Expect(svcErr.Message).To(ContainSubstring(instanceID))
 		})
 	})
 
@@ -274,6 +409,57 @@ var _ = Describe("InstanceService", func() {
 			Expect(err).To(BeAssignableToTypeOf(svcErr))
 			errors.As(err, &svcErr)
 			Expect(svcErr.Code).To(Equal(service.ErrCodeValidation))
+		})
+
+		It("filters instances by provider name", func() {
+			// Create a second provider
+			secondProvider := model.Provider{
+				ID:           uuid.New(),
+				Name:         "second-provider",
+				ServiceType:  "vm",
+				Endpoint:     mockProvider.URL,
+				HealthStatus: model.HealthStatusReady,
+			}
+			Expect(db.Create(&secondProvider).Error).NotTo(HaveOccurred())
+
+			// Create instances for different providers
+			for i := 0; i < 2; i++ {
+				req := &resource_manager.ServiceTypeInstance{
+					ProviderName: "test-provider",
+					Spec:         map[string]interface{}{"cpu": i + 1},
+				}
+				_, err := instanceService.CreateInstance(ctx, req, nil)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			for i := 0; i < 3; i++ {
+				req := &resource_manager.ServiceTypeInstance{
+					ProviderName: "second-provider",
+					Spec:         map[string]interface{}{"cpu": i + 1},
+				}
+				_, err := instanceService.CreateInstance(ctx, req, nil)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			// Filter by first provider
+			filterProvider := "test-provider"
+			result, err := instanceService.ListInstances(ctx, &filterProvider, nil, "")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*result.Instances).To(HaveLen(2))
+			for _, inst := range *result.Instances {
+				Expect(inst.ProviderName).To(Equal("test-provider"))
+			}
+
+			// Filter by second provider
+			filterProvider = "second-provider"
+			result, err = instanceService.ListInstances(ctx, &filterProvider, nil, "")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*result.Instances).To(HaveLen(3))
+			for _, inst := range *result.Instances {
+				Expect(inst.ProviderName).To(Equal("second-provider"))
+			}
 		})
 	})
 
