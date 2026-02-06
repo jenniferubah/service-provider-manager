@@ -80,8 +80,8 @@ type InstanceIdPath = string
 
 // ListInstancesParams defines parameters for ListInstances.
 type ListInstancesParams struct {
-	// Type Filter service type
-	Type *string `form:"type,omitempty" json:"type,omitempty"`
+	// Provider Filter service provider
+	Provider *string `form:"provider,omitempty" json:"provider,omitempty"`
 
 	// MaxPageSize Maximum number of results per page
 	MaxPageSize *int `form:"max_page_size,omitempty" json:"max_page_size,omitempty"`
@@ -105,16 +105,16 @@ type ServerInterface interface {
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
 	// List all service type instances
-	// (GET /service-types-instances)
+	// (GET /service-type-instances)
 	ListInstances(w http.ResponseWriter, r *http.Request, params ListInstancesParams)
 	// Create an instance of a service type
-	// (POST /service-types-instances)
+	// (POST /service-type-instances)
 	CreateInstance(w http.ResponseWriter, r *http.Request, params CreateInstanceParams)
 	// Delete an instance
-	// (DELETE /service-types-instances/{instanceId})
+	// (DELETE /service-type-instances/{instanceId})
 	DeleteInstance(w http.ResponseWriter, r *http.Request, instanceId InstanceIdPath)
 	// Get an instance of service type
-	// (GET /service-types-instances/{instanceId})
+	// (GET /service-type-instances/{instanceId})
 	GetInstance(w http.ResponseWriter, r *http.Request, instanceId InstanceIdPath)
 }
 
@@ -129,25 +129,25 @@ func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 // List all service type instances
-// (GET /service-types-instances)
+// (GET /service-type-instances)
 func (_ Unimplemented) ListInstances(w http.ResponseWriter, r *http.Request, params ListInstancesParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Create an instance of a service type
-// (POST /service-types-instances)
+// (POST /service-type-instances)
 func (_ Unimplemented) CreateInstance(w http.ResponseWriter, r *http.Request, params CreateInstanceParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Delete an instance
-// (DELETE /service-types-instances/{instanceId})
+// (DELETE /service-type-instances/{instanceId})
 func (_ Unimplemented) DeleteInstance(w http.ResponseWriter, r *http.Request, instanceId InstanceIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Get an instance of service type
-// (GET /service-types-instances/{instanceId})
+// (GET /service-type-instances/{instanceId})
 func (_ Unimplemented) GetInstance(w http.ResponseWriter, r *http.Request, instanceId InstanceIdPath) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -183,11 +183,11 @@ func (siw *ServerInterfaceWrapper) ListInstances(w http.ResponseWriter, r *http.
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListInstancesParams
 
-	// ------------- Optional query parameter "type" -------------
+	// ------------- Optional query parameter "provider" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "type", r.URL.Query(), &params.Type)
+	err = runtime.BindQueryParameter("form", true, false, "provider", r.URL.Query(), &params.Provider)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "type", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "provider", Err: err})
 		return
 	}
 
@@ -412,16 +412,16 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/health", wrapper.GetHealth)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/service-types-instances", wrapper.ListInstances)
+		r.Get(options.BaseURL+"/service-type-instances", wrapper.ListInstances)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/service-types-instances", wrapper.CreateInstance)
+		r.Post(options.BaseURL+"/service-type-instances", wrapper.CreateInstance)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/service-types-instances/{instanceId}", wrapper.DeleteInstance)
+		r.Delete(options.BaseURL+"/service-type-instances/{instanceId}", wrapper.DeleteInstance)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/service-types-instances/{instanceId}", wrapper.GetInstance)
+		r.Get(options.BaseURL+"/service-type-instances/{instanceId}", wrapper.GetInstance)
 	})
 
 	return r
@@ -504,6 +504,15 @@ type CreateInstance400ApplicationProblemPlusJSONResponse Error
 func (response CreateInstance400ApplicationProblemPlusJSONResponse) VisitCreateInstanceResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateInstance404ApplicationProblemPlusJSONResponse Error
+
+func (response CreateInstance404ApplicationProblemPlusJSONResponse) VisitCreateInstanceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -637,16 +646,16 @@ type StrictServerInterface interface {
 	// (GET /health)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
 	// List all service type instances
-	// (GET /service-types-instances)
+	// (GET /service-type-instances)
 	ListInstances(ctx context.Context, request ListInstancesRequestObject) (ListInstancesResponseObject, error)
 	// Create an instance of a service type
-	// (POST /service-types-instances)
+	// (POST /service-type-instances)
 	CreateInstance(ctx context.Context, request CreateInstanceRequestObject) (CreateInstanceResponseObject, error)
 	// Delete an instance
-	// (DELETE /service-types-instances/{instanceId})
+	// (DELETE /service-type-instances/{instanceId})
 	DeleteInstance(ctx context.Context, request DeleteInstanceRequestObject) (DeleteInstanceResponseObject, error)
 	// Get an instance of service type
-	// (GET /service-types-instances/{instanceId})
+	// (GET /service-type-instances/{instanceId})
 	GetInstance(ctx context.Context, request GetInstanceRequestObject) (GetInstanceResponseObject, error)
 }
 

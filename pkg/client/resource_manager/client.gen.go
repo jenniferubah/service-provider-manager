@@ -216,7 +216,7 @@ func NewListInstancesRequest(server string, params *ListInstancesParams) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/service-types-instances")
+	operationPath := fmt.Sprintf("/service-type-instances")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -229,9 +229,9 @@ func NewListInstancesRequest(server string, params *ListInstancesParams) (*http.
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Type != nil {
+		if params.Provider != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "type", runtime.ParamLocationQuery, *params.Type); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "provider", runtime.ParamLocationQuery, *params.Provider); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -308,7 +308,7 @@ func NewCreateInstanceRequestWithBody(server string, params *CreateInstanceParam
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/service-types-instances")
+	operationPath := fmt.Sprintf("/service-type-instances")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -366,7 +366,7 @@ func NewDeleteInstanceRequest(server string, instanceId InstanceIdPath) (*http.R
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/service-types-instances/%s", pathParam0)
+	operationPath := fmt.Sprintf("/service-type-instances/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -400,7 +400,7 @@ func NewGetInstanceRequest(server string, instanceId InstanceIdPath) (*http.Requ
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/service-types-instances/%s", pathParam0)
+	operationPath := fmt.Sprintf("/service-type-instances/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -530,6 +530,7 @@ type CreateInstanceResponse struct {
 	HTTPResponse                  *http.Response
 	JSON201                       *ServiceTypeInstance
 	ApplicationproblemJSON400     *Error
+	ApplicationproblemJSON404     *Error
 	ApplicationproblemJSON409     *Error
 	ApplicationproblemJSON422     *Error
 	ApplicationproblemJSONDefault *Error
@@ -746,6 +747,13 @@ func ParseCreateInstanceResponse(rsp *http.Response) (*CreateInstanceResponse, e
 			return nil, err
 		}
 		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
 		var dest Error

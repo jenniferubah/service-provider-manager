@@ -36,7 +36,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Health'
 
-  /service-types-instances:
+  /service-type-instances:
     get:
       tags:
         - instance
@@ -44,9 +44,9 @@ paths:
       operationId: listInstances
       description: Returns a list of service type instances with optional filtering
       parameters:
-        - name: type
+        - name: provider
           in: query
-          description: Filter service type
+          description: Filter service provider
           schema:
             type: string
         - name: max_page_size
@@ -118,6 +118,12 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '409':
           description: Conflict - instanceID already in use
           content:
@@ -137,7 +143,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /service-types-instances/{instanceId}:
+  /service-type-instances/{instanceId}:
     get:
       tags:
         - instance
