@@ -94,7 +94,10 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 	created, err := s.store.ServiceTypeInstance().Create(ctx, instance)
 	if err != nil {
 		// add re-try mechanism
-		return nil, err
+		return nil, &service.ServiceError{
+			Code:    service.ErrCodeInternal,
+			Message: fmt.Sprintf("failed to create database record for instance %s: %v", providerResponse.ID, err),
+		}
 	}
 
 	log.Printf("Inserted instance into DB: %s", created.ID)
@@ -215,7 +218,10 @@ func (s *InstanceService) DeleteInstance(ctx context.Context, instanceID string)
 	err = s.store.ServiceTypeInstance().Delete(ctx, id)
 	if err != nil {
 		// add re-try mechanism
-		return err
+		return &service.ServiceError{
+			Code:    service.ErrCodeInternal,
+			Message: fmt.Sprintf("failed to delete database record for instance %s: %v", instanceID, err),
+		}
 	}
 
 	log.Printf("Deleted instance from DB record: %s", instanceID)

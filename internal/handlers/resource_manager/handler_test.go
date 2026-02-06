@@ -152,7 +152,7 @@ var _ = Describe("Resource Manager Handler", func() {
 			resp, err := handler.CreateInstance(ctx, req)
 
 			Expect(err).NotTo(HaveOccurred())
-			_, ok := resp.(server.CreateInstance400ApplicationProblemPlusJSONResponse)
+			_, ok := resp.(server.CreateInstance404ApplicationProblemPlusJSONResponse)
 			Expect(ok).To(BeTrue())
 		})
 	})
