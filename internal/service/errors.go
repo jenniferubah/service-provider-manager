@@ -6,6 +6,7 @@ const (
 	ErrCodeConflict      = "CONFLICT"
 	ErrCodeValidation    = "VALIDATION"
 	ErrCodeProviderError = "PROVIDER_ERROR"
+	ErrCodeInternal      = "INTERNAL_ERROR"
 )
 
 // ServiceError represents a business logic error with a code for HTTP mapping.
