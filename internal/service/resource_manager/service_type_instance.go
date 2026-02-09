@@ -47,7 +47,10 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 				Message: fmt.Sprintf("provider '%s' not found", providerName),
 			}
 		}
-		return nil, err
+		return nil, &service.ServiceError{
+			Code:    service.ErrCodeInternal,
+			Message: fmt.Sprintf("failed to retrieve provider: %v", err),
+		}
 	}
 
 	// Check Provider if provider is not in ready state
@@ -124,7 +127,10 @@ func (s *InstanceService) GetInstance(ctx context.Context, instanceID string) (*
 				Message: fmt.Sprintf("instance %s not found", instanceID),
 			}
 		}
-		return nil, err
+		return nil, &service.ServiceError{
+			Code:    service.ErrCodeInternal,
+			Message: fmt.Sprintf("failed to retrieve instance: %v", err),
+		}
 	}
 
 	return ModelToAPI(instance), nil
@@ -191,13 +197,19 @@ func (s *InstanceService) DeleteInstance(ctx context.Context, instanceID string)
 				Message: fmt.Sprintf("instance %s not found", instanceID),
 			}
 		}
-		return err
+		return &service.ServiceError{
+			Code:    service.ErrCodeInternal,
+			Message: fmt.Sprintf("failed to retrieve instance: %v", err),
+		}
 	}
 
 	// Get provider to send delete request
 	provider, err := s.store.Provider().GetByName(ctx, instance.ProviderName)
 	if err != nil && !errors.Is(err, store.ErrProviderNotFound) {
-		return err
+		return &service.ServiceError{
+			Code:    service.ErrCodeInternal,
+			Message: fmt.Sprintf("failed to retrieve provider: %v", err),
+		}
 	}
 
 	// Send delete request to provider if provider still exists
@@ -246,7 +258,10 @@ func (s *InstanceService) resolveInstanceID(ctx context.Context, queryID *string
 
 	exists, err := s.store.ServiceTypeInstance().ExistsByID(ctx, requestedID)
 	if err != nil {
-		return uuid.UUID{}, err
+		return uuid.UUID{}, &service.ServiceError{
+			Code:    service.ErrCodeInternal,
+			Message: fmt.Sprintf("failed to check instance existence: %v", err),
+		}
 	}
 	if exists {
 		return uuid.UUID{}, &service.ServiceError{
