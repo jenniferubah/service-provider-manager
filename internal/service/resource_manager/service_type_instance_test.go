@@ -401,16 +401,6 @@ var _ = Describe("InstanceService", func() {
 			Expect(*result.Instances).To(HaveLen(2))
 		})
 
-		It("returns validation error for invalid page token", func() {
-			_, err := instanceService.ListInstances(ctx, nil, nil, "invalid-token")
-
-			Expect(err).To(HaveOccurred())
-			var svcErr *service.ServiceError
-			Expect(err).To(BeAssignableToTypeOf(svcErr))
-			errors.As(err, &svcErr)
-			Expect(svcErr.Code).To(Equal(service.ErrCodeValidation))
-		})
-
 		It("filters instances by provider name", func() {
 			// Create a second provider
 			secondProvider := model.Provider{

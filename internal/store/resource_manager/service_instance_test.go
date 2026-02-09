@@ -99,26 +99,47 @@ var _ = Describe("ServiceTypeInstance Store", func() {
 			addInstanceToStore(newServiceTypeInstance(kubevirtProvider, "instance3", map[string]any{}))
 		})
 
-		It("returns all instances when filter is nil", func() {
-			instances, err := s.List(ctx, nil, nil)
+		It("returns all instances when opts is nil", func() {
+			result, err := s.List(ctx, nil)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(instances).To(HaveLen(3))
+			Expect(result.Instances).To(HaveLen(3))
+			Expect(result.NextPageToken).To(BeEmpty())
 		})
 
 		It("filters by provider name", func() {
-			instances, err := s.List(ctx, &rmstore.ServiceTypeInstanceFilter{ProviderName: &kubevirtProvider}, nil)
+			result, err := s.List(ctx, &rmstore.ServiceTypeInstanceListOptions{
+				ProviderName: &kubevirtProvider,
+			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(instances).To(HaveLen(3))
+			Expect(result.Instances).To(HaveLen(3))
 		})
 
-		It("applies pagination limit/offset", func() {
-			firstTwo, err := s.List(ctx, nil, &rmstore.Pagination{Limit: 2, Offset: 0})
+		It("applies pagination with page size", func() {
+			result, err := s.List(ctx, &rmstore.ServiceTypeInstanceListOptions{
+				PageSize: 2,
+			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(firstTwo).To(HaveLen(2))
+			Expect(result.Instances).To(HaveLen(2))
+			Expect(result.NextPageToken).NotTo(BeEmpty())
+		})
 
-			lastOne, err := s.List(ctx, nil, &rmstore.Pagination{Limit: 10, Offset: 2})
+		It("returns next page using page token", func() {
+			// Get first page
+			firstPage, err := s.List(ctx, &rmstore.ServiceTypeInstanceListOptions{
+				PageSize: 2,
+			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(lastOne).To(HaveLen(1))
+			Expect(firstPage.Instances).To(HaveLen(2))
+			Expect(firstPage.NextPageToken).NotTo(BeEmpty())
+
+			// Get second page using token
+			secondPage, err := s.List(ctx, &rmstore.ServiceTypeInstanceListOptions{
+				PageSize:  2,
+				PageToken: &firstPage.NextPageToken,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(secondPage.Instances).To(HaveLen(1))
+			Expect(secondPage.NextPageToken).To(BeEmpty())
 		})
 	})
 

@@ -132,43 +132,44 @@ func (s *InstanceService) GetInstance(ctx context.Context, instanceID string) (*
 
 // ListInstances returns instances with optional filtering and pagination
 func (s *InstanceService) ListInstances(ctx context.Context, providerName *string, maxPageSize *int, pageToken string) (*resource_manager.ServiceTypeInstanceList, error) {
-	var filter *rmstore.ServiceTypeInstanceFilter
-	if providerName != nil && *providerName != "" {
-		filter = &rmstore.ServiceTypeInstanceFilter{ProviderName: providerName}
+	opts := &rmstore.ServiceTypeInstanceListOptions{
+		ProviderName: providerName,
 	}
 
-	// Apply pagination
-	limit := 100
+	// Apply max page size (default 50, max 100)
 	if maxPageSize != nil && *maxPageSize > 0 && *maxPageSize < 100 {
-		limit = *maxPageSize
+		opts.PageSize = *maxPageSize
 	}
 
-	offset := 0
+	// Apply page token
 	if pageToken != "" {
-		decoded, err := service.DecodePageToken(pageToken)
-		if err != nil {
-			return nil, &service.ServiceError{
-				Code: service.ErrCodeValidation, Message: "invalid page_token"}
-		}
-		offset = decoded
+		opts.PageToken = &pageToken
 	}
 
-	pagination := &rmstore.Pagination{Limit: limit, Offset: offset}
-
-	instances, err := s.store.ServiceTypeInstance().List(ctx, filter, pagination)
+	result, err := s.store.ServiceTypeInstance().List(ctx, opts)
 	if err != nil {
-		return nil, err
+		return nil, &service.ServiceError{
+			Code:    service.ErrCodeInternal,
+			Message: fmt.Sprintf("failed to list instances: %v", err),
+		}
 	}
 
 	// Convert to API types
-	result := make([]resource_manager.ServiceTypeInstance, len(instances))
-	for i, inst := range instances {
-		result[i] = *ModelToAPI(&inst)
+	apiInstances := make([]resource_manager.ServiceTypeInstance, len(result.Instances))
+	for i, inst := range result.Instances {
+		apiInstances[i] = *ModelToAPI(&inst)
 	}
 
-	return &resource_manager.ServiceTypeInstanceList{
-		Instances: &result,
-	}, nil
+	apiResult := &resource_manager.ServiceTypeInstanceList{
+		Instances: &apiInstances,
+	}
+
+	// Set next page token if available
+	if result.NextPageToken != "" {
+		apiResult.NextPageToken = &result.NextPageToken
+	}
+
+	return apiResult, nil
 }
 
 // DeleteInstance removes an instance by ID
