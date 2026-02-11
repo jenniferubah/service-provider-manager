@@ -29,9 +29,9 @@ func (h *Handler) GetHealth(ctx context.Context, request server.GetHealthRequest
 
 // ListInstances returns a paginated list of service type instances.
 func (h *Handler) ListInstances(ctx context.Context, request server.ListInstancesRequestObject) (server.ListInstancesResponseObject, error) {
-	var pageToken string
+	var pageToken *string
 	if request.Params.PageToken != nil {
-		pageToken = *request.Params.PageToken
+		pageToken = request.Params.PageToken
 	}
 
 	result, err := h.instanceService.ListInstances(

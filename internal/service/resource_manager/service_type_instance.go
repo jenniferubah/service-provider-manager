@@ -143,13 +143,20 @@ func (s *InstanceService) ListInstances(ctx context.Context, providerName *strin
 	}
 
 	// Apply max page size (default 50, max 100)
-	if maxPageSize != nil && *maxPageSize > 0 && *maxPageSize < 100 {
-		opts.PageSize = *maxPageSize
+	if maxPageSize != nil {
+		if *maxPageSize > 0 && *maxPageSize <= 100 {
+			opts.PageSize = *maxPageSize
+		} else {
+			return nil, &service.ServiceError{
+				Code:    service.ErrCodeValidation,
+				Message: "page size must be between 1 and 100",
+			}
+		}
 	}
 
 	// Apply page token
-	if pageToken != "" {
-		opts.PageToken = &pageToken
+	if pageToken != nil && *pageToken != "" {
+		opts.PageToken = pageToken
 	}
 
 	result, err := s.store.ServiceTypeInstance().List(ctx, opts)
