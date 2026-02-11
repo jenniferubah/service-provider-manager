@@ -66,6 +66,7 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 	if err != nil {
 		return nil, err
 	}
+	instanceIDStr := instanceID.String()
 
 	// Convert spec to JSON
 	specJSON, err := json.Marshal(request.Spec)
@@ -76,8 +77,8 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 		}
 	}
 
-	// Send request to provider endpoint
-	providerResponse, err := s.sendToProvider(ctx, provider.Endpoint, request)
+	// Send request to provider endpoint with the resolved ID
+	providerResponse, err := s.createInstanceWithProvider(ctx, provider.Endpoint, request, &instanceIDStr)
 	if err != nil {
 		return nil, &service.ServiceError{
 			Code:    service.ErrCodeProviderError,
@@ -137,7 +138,7 @@ func (s *InstanceService) GetInstance(ctx context.Context, instanceID string) (*
 }
 
 // ListInstances returns instances with optional filtering and pagination
-func (s *InstanceService) ListInstances(ctx context.Context, providerName *string, maxPageSize *int, pageToken string) (*resource_manager.ServiceTypeInstanceList, error) {
+func (s *InstanceService) ListInstances(ctx context.Context, providerName *string, maxPageSize *int, pageToken *string) (*resource_manager.ServiceTypeInstanceList, error) {
 	opts := &rmstore.ServiceTypeInstanceListOptions{
 		ProviderName: providerName,
 	}
@@ -221,14 +222,12 @@ func (s *InstanceService) DeleteInstance(ctx context.Context, instanceID string)
 
 	// Send delete request to provider if provider still exists
 	if provider != nil {
-		err = s.sendDeleteToProvider(ctx, provider.Endpoint, instanceID)
+		err = s.deleteInstanceWithProvider(ctx, provider.Endpoint, instanceID)
 		if err != nil {
 			log.Printf("Error: failed to delete instance (%s) from provider (%s): %v", instanceID, provider.Name, err)
-			if errors.Is(err, rmstore.ErrInstanceNotFound) {
-				return &service.ServiceError{
-					Code:    service.ErrCodeProviderError,
-					Message: fmt.Sprintf("failed to delete instance (%s): %v", instanceID, err),
-				}
+			return &service.ServiceError{
+				Code:    service.ErrCodeProviderError,
+				Message: fmt.Sprintf("failed to delete instance (%s): %v", instanceID, err),
 			}
 		}
 		log.Printf("Deleted instance (%s) from SP (%s)", instanceID, provider.Name)
@@ -280,15 +279,16 @@ func (s *InstanceService) resolveInstanceID(ctx context.Context, queryID *string
 	return requestedID, nil
 }
 
-// sendToProvider sends the create request to the provider's endpoint
-func (s *InstanceService) sendToProvider(ctx context.Context, endpoint string, request *resource_manager.ServiceTypeInstance) (*ProviderResponse, error) {
+// createInstanceWithProvider sends the create request to the provider's endpoint
+func (s *InstanceService) createInstanceWithProvider(ctx context.Context, endpoint string, request *resource_manager.ServiceTypeInstance, id *string) (*ProviderResponse, error) {
 
 	var providerResp ProviderResponse
 
 	resp, err := s.httpClient.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
-		SetBody(request).
+		SetQueryParam("id", *id).
+		SetBody(request.Spec).
 		SetResult(&providerResp).
 		Post(endpoint)
 
@@ -309,8 +309,8 @@ func (s *InstanceService) sendToProvider(ctx context.Context, endpoint string, r
 	return &providerResp, nil
 }
 
-// sendDeleteToProvider sends the delete request to the provider's endpoint
-func (s *InstanceService) sendDeleteToProvider(ctx context.Context, endpoint string, instanceID string) error {
+// deleteInstanceWithProvider sends the delete request to the provider's endpoint
+func (s *InstanceService) deleteInstanceWithProvider(ctx context.Context, endpoint string, instanceID string) error {
 	resp, err := s.httpClient.R().
 		SetContext(ctx).
 		Delete(fmt.Sprintf("%s/%s", endpoint, instanceID))
