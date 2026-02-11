@@ -42,23 +42,14 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 	provider, err := s.store.Provider().GetByName(ctx, providerName)
 	if err != nil {
 		if errors.Is(err, store.ErrProviderNotFound) {
-			return nil, &service.ServiceError{
-				Code:    service.ErrCodeNotFound,
-				Message: fmt.Sprintf("provider '%s' not found", providerName),
-			}
+			return nil, service.NewNotFoundError(fmt.Sprintf("provider '%s' not found", providerName))
 		}
-		return nil, &service.ServiceError{
-			Code:    service.ErrCodeInternal,
-			Message: fmt.Sprintf("failed to retrieve provider: %v", err),
-		}
+		return nil, service.NewInternalError(fmt.Sprintf("failed to retrieve provider: %v", err))
 	}
 
 	// Check Provider if provider is not in ready state
 	if provider.HealthStatus != model.HealthStatusReady {
-		return nil, &service.ServiceError{
-			Code:    service.ErrCodeProviderError,
-			Message: fmt.Sprintf("provider '%s' is not in ready state (current status: %s)", providerName, provider.HealthStatus),
-		}
+		return nil, service.NewProviderError(fmt.Sprintf("provider '%s' is not in ready state (current status: %s)", providerName, provider.HealthStatus))
 	}
 
 	// Resolve instance ID
@@ -71,19 +62,13 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 	// Convert spec to JSON
 	specJSON, err := json.Marshal(request.Spec)
 	if err != nil {
-		return nil, &service.ServiceError{
-			Code:    service.ErrCodeValidation,
-			Message: fmt.Sprintf("invalid spec: %v", err),
-		}
+		return nil, service.NewValidationError(fmt.Sprintf("invalid spec: %v", err))
 	}
 
 	// Send request to provider endpoint with the resolved ID
 	providerResponse, err := s.createInstanceWithProvider(ctx, provider.Endpoint, request, &instanceIDStr)
 	if err != nil {
-		return nil, &service.ServiceError{
-			Code:    service.ErrCodeProviderError,
-			Message: fmt.Sprintf("Error from Provider (%s): %v", providerName, err),
-		}
+		return nil, service.NewProviderError(fmt.Sprintf("Error from Provider (%s): %v", providerName, err))
 	}
 	log.Printf("Created instance: %s for provider: %s", providerResponse.ID, providerName)
 
@@ -98,10 +83,7 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 	created, err := s.store.ServiceTypeInstance().Create(ctx, instance)
 	if err != nil {
 		// add re-try mechanism
-		return nil, &service.ServiceError{
-			Code:    service.ErrCodeInternal,
-			Message: fmt.Sprintf("failed to create database record for instance %s: %v", providerResponse.ID, err),
-		}
+		return nil, service.NewInternalError(fmt.Sprintf("failed to create database record for instance %s: %v", providerResponse.ID, err))
 	}
 
 	log.Printf("Inserted instance into DB: %s", created.ID)
@@ -114,24 +96,15 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 func (s *InstanceService) GetInstance(ctx context.Context, instanceID string) (*resource_manager.ServiceTypeInstance, error) {
 	id, err := uuid.Parse(instanceID)
 	if err != nil {
-		return nil, &service.ServiceError{
-			Code:    service.ErrCodeValidation,
-			Message: "invalid instance ID format",
-		}
+		return nil, service.NewValidationError("invalid instance ID format")
 	}
 
 	instance, err := s.store.ServiceTypeInstance().Get(ctx, id)
 	if err != nil {
 		if errors.Is(err, rmstore.ErrInstanceNotFound) {
-			return nil, &service.ServiceError{
-				Code:    service.ErrCodeNotFound,
-				Message: fmt.Sprintf("instance %s not found", instanceID),
-			}
+			return nil, service.NewNotFoundError(fmt.Sprintf("instance %s not found", instanceID))
 		}
-		return nil, &service.ServiceError{
-			Code:    service.ErrCodeInternal,
-			Message: fmt.Sprintf("failed to retrieve instance: %v", err),
-		}
+		return nil, service.NewInternalError(fmt.Sprintf("failed to retrieve instance: %v", err))
 	}
 
 	return ModelToAPI(instance), nil
@@ -148,10 +121,7 @@ func (s *InstanceService) ListInstances(ctx context.Context, providerName *strin
 		if *maxPageSize > 0 && *maxPageSize <= 100 {
 			opts.PageSize = *maxPageSize
 		} else {
-			return nil, &service.ServiceError{
-				Code:    service.ErrCodeValidation,
-				Message: "page size must be between 1 and 100",
-			}
+			return nil, service.NewValidationError("page size must be between 1 and 100")
 		}
 	}
 
@@ -162,10 +132,7 @@ func (s *InstanceService) ListInstances(ctx context.Context, providerName *strin
 
 	result, err := s.store.ServiceTypeInstance().List(ctx, opts)
 	if err != nil {
-		return nil, &service.ServiceError{
-			Code:    service.ErrCodeInternal,
-			Message: fmt.Sprintf("failed to list instances: %v", err),
-		}
+		return nil, service.NewInternalError(fmt.Sprintf("failed to list instances: %v", err))
 	}
 
 	// Convert to API types
@@ -190,34 +157,22 @@ func (s *InstanceService) ListInstances(ctx context.Context, providerName *strin
 func (s *InstanceService) DeleteInstance(ctx context.Context, instanceID string) error {
 	id, err := uuid.Parse(instanceID)
 	if err != nil {
-		return &service.ServiceError{
-			Code:    service.ErrCodeValidation,
-			Message: "invalid instance ID format",
-		}
+		return service.NewValidationError("invalid instance ID format")
 	}
 
 	// Get instance to find provider
 	instance, err := s.store.ServiceTypeInstance().Get(ctx, id)
 	if err != nil {
 		if errors.Is(err, rmstore.ErrInstanceNotFound) {
-			return &service.ServiceError{
-				Code:    service.ErrCodeNotFound,
-				Message: fmt.Sprintf("instance %s not found", instanceID),
-			}
+			return service.NewNotFoundError(fmt.Sprintf("instance %s not found", instanceID))
 		}
-		return &service.ServiceError{
-			Code:    service.ErrCodeInternal,
-			Message: fmt.Sprintf("failed to retrieve instance: %v", err),
-		}
+		return service.NewInternalError(fmt.Sprintf("failed to retrieve instance: %v", err))
 	}
 
 	// Get provider to send delete request
 	provider, err := s.store.Provider().GetByName(ctx, instance.ProviderName)
 	if err != nil && !errors.Is(err, store.ErrProviderNotFound) {
-		return &service.ServiceError{
-			Code:    service.ErrCodeInternal,
-			Message: fmt.Sprintf("failed to retrieve provider: %v", err),
-		}
+		return service.NewInternalError(fmt.Sprintf("failed to retrieve provider: %v", err))
 	}
 
 	// Send delete request to provider if provider still exists
@@ -225,10 +180,7 @@ func (s *InstanceService) DeleteInstance(ctx context.Context, instanceID string)
 		err = s.deleteInstanceWithProvider(ctx, provider.Endpoint, instanceID)
 		if err != nil {
 			log.Printf("Error: failed to delete instance (%s) from provider (%s): %v", instanceID, provider.Name, err)
-			return &service.ServiceError{
-				Code:    service.ErrCodeProviderError,
-				Message: fmt.Sprintf("failed to delete instance (%s): %v", instanceID, err),
-			}
+			return service.NewProviderError(fmt.Sprintf("failed to delete instance (%s): %v", instanceID, err))
 		}
 		log.Printf("Deleted instance (%s) from SP (%s)", instanceID, provider.Name)
 	}
@@ -237,10 +189,7 @@ func (s *InstanceService) DeleteInstance(ctx context.Context, instanceID string)
 	err = s.store.ServiceTypeInstance().Delete(ctx, id)
 	if err != nil {
 		// add re-try mechanism
-		return &service.ServiceError{
-			Code:    service.ErrCodeInternal,
-			Message: fmt.Sprintf("failed to delete database record for instance %s: %v", instanceID, err),
-		}
+		return service.NewInternalError(fmt.Sprintf("failed to delete database record for instance %s: %v", instanceID, err))
 	}
 
 	log.Printf("Deleted instance from DB record: %s", instanceID)
@@ -256,24 +205,15 @@ func (s *InstanceService) resolveInstanceID(ctx context.Context, queryID *string
 
 	requestedID, err := uuid.Parse(*queryID)
 	if err != nil {
-		return uuid.UUID{}, &service.ServiceError{
-			Code:    service.ErrCodeValidation,
-			Message: "invalid instance ID format",
-		}
+		return uuid.UUID{}, service.NewValidationError("invalid instance ID format")
 	}
 
 	exists, err := s.store.ServiceTypeInstance().ExistsByID(ctx, requestedID)
 	if err != nil {
-		return uuid.UUID{}, &service.ServiceError{
-			Code:    service.ErrCodeInternal,
-			Message: fmt.Sprintf("failed to check instance existence: %v", err),
-		}
+		return uuid.UUID{}, service.NewInternalError(fmt.Sprintf("failed to check instance existence: %v", err))
 	}
 	if exists {
-		return uuid.UUID{}, &service.ServiceError{
-			Code:    service.ErrCodeConflict,
-			Message: fmt.Sprintf("instance with ID '%s' already exists", requestedID),
-		}
+		return uuid.UUID{}, service.NewConflictError(fmt.Sprintf("instance with ID '%s' already exists", requestedID))
 	}
 
 	return requestedID, nil
@@ -293,17 +233,11 @@ func (s *InstanceService) createInstanceWithProvider(ctx context.Context, endpoi
 		Post(endpoint)
 
 	if err != nil {
-		return nil, &service.ServiceError{
-			Code:    service.ErrCodeProviderError,
-			Message: fmt.Sprintf("failed to connect to provider: %v", err),
-		}
+		return nil, service.NewProviderError(fmt.Sprintf("failed to connect to provider: %v", err))
 	}
 
 	if resp.IsError() {
-		return nil, &service.ServiceError{
-			Code:    service.ErrCodeProviderError,
-			Message: fmt.Sprintf("provider returned error: %s", resp.Status()),
-		}
+		return nil, service.NewProviderError(fmt.Sprintf("provider returned error: %s", resp.Status()))
 	}
 
 	return &providerResp, nil
