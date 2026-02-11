@@ -50,11 +50,10 @@ var _ = Describe("Resource Manager Handler", func() {
 
 		// Create a provider in the database
 		provider := model.Provider{
-			ID:            uuid.New(),
-			Name:          "test-provider",
-			ServiceType:   "vm",
-			Endpoint:      mockProvider.URL,
-			SchemaVersion: "v1alpha1",
+			ID:          uuid.New(),
+			Name:        "test-provider",
+			ServiceType: "vm",
+			Endpoint:    mockProvider.URL,
 		}
 		Expect(db.Create(&provider).Error).NotTo(HaveOccurred())
 
@@ -141,7 +140,7 @@ var _ = Describe("Resource Manager Handler", func() {
 			Expect(ok).To(BeTrue())
 		})
 
-		It("returns 400 for non-existent provider", func() {
+		It("returns 404 for non-existent provider", func() {
 			req := server.CreateInstanceRequestObject{
 				Body: &server.ServiceTypeInstance{
 					ProviderName: "non-existent-provider",
