@@ -2,7 +2,6 @@ package resource_manager
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -15,7 +14,6 @@ import (
 	rmstore "github.com/dcm-project/service-provider-manager/internal/store/resource_manager"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
-	"gorm.io/datatypes"
 )
 
 type InstanceService struct {
@@ -59,12 +57,6 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 	}
 	instanceIDStr := instanceID.String()
 
-	// Convert spec to JSON
-	specJSON, err := json.Marshal(request.Spec)
-	if err != nil {
-		return nil, service.NewValidationError(fmt.Sprintf("invalid spec: %v", err))
-	}
-
 	// Send request to provider endpoint with the resolved ID
 	providerResponse, err := s.createInstanceWithProvider(ctx, provider.Endpoint, request, &instanceIDStr)
 	if err != nil {
@@ -77,7 +69,7 @@ func (s *InstanceService) CreateInstance(ctx context.Context, request *resource_
 		ID:           instanceID,
 		ProviderName: providerName,
 		Status:       providerResponse.Status,
-		Spec:         datatypes.JSON(specJSON),
+		Spec:         request.Spec,
 	}
 
 	created, err := s.store.ServiceTypeInstance().Create(ctx, instance)

@@ -1,7 +1,6 @@
 package resource_manager
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/dcm-project/service-provider-manager/api/v1alpha1/resource_manager"
@@ -20,15 +19,12 @@ func ModelToAPI(instance *model.ServiceTypeInstance) *resource_manager.ServiceTy
 	id := instance.ID.String()
 	path := fmt.Sprintf("service-type-instances/%s", id)
 
-	var spec map[string]interface{}
-	_ = json.Unmarshal(instance.Spec, &spec)
-
 	return &resource_manager.ServiceTypeInstance{
 		Id:           &id,
 		Path:         &path,
 		ProviderName: instance.ProviderName,
 		Status:       &instance.Status,
-		Spec:         spec,
+		Spec:         instance.Spec,
 		CreateTime:   service.PtrTime(instance.CreateTime),
 		UpdateTime:   service.PtrTime(instance.UpdateTime),
 	}

@@ -2,7 +2,6 @@ package store_test
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/dcm-project/service-provider-manager/internal/store/model"
 	rmstore "github.com/dcm-project/service-provider-manager/internal/store/resource_manager"
@@ -14,14 +13,13 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func newServiceTypeInstance(providerName, instanceName string, spec any) model.ServiceTypeInstance {
-	jsonSpec, _ := json.Marshal(spec)
+func newServiceTypeInstance(providerName, instanceName string, spec map[string]interface{}) model.ServiceTypeInstance {
 	return model.ServiceTypeInstance{
 		ID:           uuid.New(),
 		ProviderName: providerName,
 		Status:       "PROVISIONING",
 		InstanceName: instanceName,
-		Spec:         jsonSpec,
+		Spec:         spec,
 	}
 }
 
