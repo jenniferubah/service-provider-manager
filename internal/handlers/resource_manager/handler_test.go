@@ -238,7 +238,7 @@ var _ = Describe("Resource Manager Handler", func() {
 			Expect(*jsonResp.Instances).To(HaveLen(3))
 		})
 
-		It("respects max page size", func() {
+		It("respects max page size and returns next page token", func() {
 			// Create 5 instances
 			for i := 0; i < 5; i++ {
 				createReq := server.CreateInstanceRequestObject{
@@ -251,6 +251,7 @@ var _ = Describe("Resource Manager Handler", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
+			// First page: request 2 items
 			maxPageSize := 2
 			req := server.ListInstancesRequestObject{
 				Params: server.ListInstancesParams{MaxPageSize: &maxPageSize},
@@ -262,6 +263,40 @@ var _ = Describe("Resource Manager Handler", func() {
 			jsonResp, ok := resp.(server.ListInstances200JSONResponse)
 			Expect(ok).To(BeTrue())
 			Expect(*jsonResp.Instances).To(HaveLen(2))
+			Expect(jsonResp.NextPageToken).NotTo(BeNil())
+			Expect(*jsonResp.NextPageToken).NotTo(BeEmpty())
+
+			// Second page: use the page token
+			req2 := server.ListInstancesRequestObject{
+				Params: server.ListInstancesParams{
+					MaxPageSize: &maxPageSize,
+					PageToken:   jsonResp.NextPageToken,
+				},
+			}
+
+			resp2, err := handler.ListInstances(ctx, req2)
+
+			Expect(err).NotTo(HaveOccurred())
+			jsonResp2, ok := resp2.(server.ListInstances200JSONResponse)
+			Expect(ok).To(BeTrue())
+			Expect(*jsonResp2.Instances).To(HaveLen(2))
+			Expect(jsonResp2.NextPageToken).NotTo(BeNil())
+
+			// Third page: should have 1 item and no next token
+			req3 := server.ListInstancesRequestObject{
+				Params: server.ListInstancesParams{
+					MaxPageSize: &maxPageSize,
+					PageToken:   jsonResp2.NextPageToken,
+				},
+			}
+
+			resp3, err := handler.ListInstances(ctx, req3)
+
+			Expect(err).NotTo(HaveOccurred())
+			jsonResp3, ok := resp3.(server.ListInstances200JSONResponse)
+			Expect(ok).To(BeTrue())
+			Expect(*jsonResp3.Instances).To(HaveLen(1))
+			Expect(jsonResp3.NextPageToken).To(BeNil())
 		})
 	})
 

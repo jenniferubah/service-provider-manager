@@ -142,12 +142,8 @@ func (s *InstanceService) ListInstances(ctx context.Context, providerName *strin
 	}
 
 	apiResult := &resource_manager.ServiceTypeInstanceList{
-		Instances: &apiInstances,
-	}
-
-	// Set next page token if available
-	if result.NextPageToken != "" {
-		apiResult.NextPageToken = &result.NextPageToken
+		Instances:     &apiInstances,
+		NextPageToken: result.NextPageToken,
 	}
 
 	return apiResult, nil

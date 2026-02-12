@@ -26,7 +26,7 @@ type ServiceTypeInstanceListOptions struct {
 // ServiceTypeInstanceListResult contains the result of a List operation.
 type ServiceTypeInstanceListResult struct {
 	Instances     model.ServiceTypeInstanceList
-	NextPageToken string
+	NextPageToken *string
 }
 
 type ServiceTypeInstance interface {
@@ -93,7 +93,8 @@ func (s *ServiceTypeInstanceStore) List(ctx context.Context, opts *ServiceTypeIn
 		result.Instances = instances[:pageSize]
 		// Encode next offset as page token
 		nextOffset := offset + pageSize
-		result.NextPageToken = base64.StdEncoding.EncodeToString([]byte(strconv.Itoa(nextOffset)))
+		encodedNextPageToken := base64.StdEncoding.EncodeToString([]byte(strconv.Itoa(nextOffset)))
+		result.NextPageToken = &encodedNextPageToken
 	}
 
 	return result, nil

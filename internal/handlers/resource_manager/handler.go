@@ -29,26 +29,21 @@ func (h *Handler) GetHealth(ctx context.Context, request server.GetHealthRequest
 
 // ListInstances returns a paginated list of service type instances.
 func (h *Handler) ListInstances(ctx context.Context, request server.ListInstancesRequestObject) (server.ListInstancesResponseObject, error) {
-	var pageToken *string
-	if request.Params.PageToken != nil {
-		pageToken = request.Params.PageToken
-	}
 
 	result, err := h.instanceService.ListInstances(
 		ctx,
 		request.Params.Provider,
 		request.Params.MaxPageSize,
-		pageToken,
+		request.Params.PageToken,
 	)
 	if err != nil {
 		return handleListInstancesError(err), nil
 	}
 
 	instances := convertAPIListToServer(result.Instances)
-	response := server.ListInstances200JSONResponse{Instances: &instances}
-	if result.NextPageToken != nil && *result.NextPageToken != "" {
-		response.NextPageToken = result.NextPageToken
-	}
+	response := server.ListInstances200JSONResponse{
+		Instances:     &instances,
+		NextPageToken: result.NextPageToken}
 
 	return response, nil
 }

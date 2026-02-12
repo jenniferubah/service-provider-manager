@@ -383,7 +383,7 @@ var _ = Describe("InstanceService", func() {
 			Expect(*result.Instances).To(HaveLen(3))
 		})
 
-		It("respects max page size", func() {
+		It("respects max page size and returns next page token", func() {
 			// Create 5 instances
 			for i := 0; i < 5; i++ {
 				req := &resource_manager.ServiceTypeInstance{
@@ -399,6 +399,30 @@ var _ = Describe("InstanceService", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(*result.Instances).To(HaveLen(2))
+			Expect(result.NextPageToken).NotTo(BeNil())
+			Expect(*result.NextPageToken).NotTo(BeEmpty())
+
+			// Get second page using token
+			secondPage, err := instanceService.ListInstances(ctx, nil, &maxPageSize, result.NextPageToken)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*secondPage.Instances).To(HaveLen(2))
+			Expect(secondPage.NextPageToken).NotTo(BeNil())
+
+			// Verify instances are different between pages
+			firstIDs := make(map[string]bool)
+			for _, inst := range *result.Instances {
+				firstIDs[*inst.Id] = true
+			}
+			for _, inst := range *secondPage.Instances {
+				Expect(firstIDs[*inst.Id]).To(BeFalse(), "Instance should not appear in both pages")
+			}
+
+			// Get third page (last page with 1 item)
+			thirdPage, err := instanceService.ListInstances(ctx, nil, &maxPageSize, secondPage.NextPageToken)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*thirdPage.Instances).To(HaveLen(1))
+			Expect(thirdPage.NextPageToken).To(BeNil())
 		})
 
 		It("filters instances by provider name", func() {
@@ -450,87 +474,6 @@ var _ = Describe("InstanceService", func() {
 			for _, inst := range *result.Instances {
 				Expect(inst.ProviderName).To(Equal("second-provider"))
 			}
-		})
-
-		It("returns next page token when there are more results", func() {
-			// Create more instances than the page size
-			for i := 0; i < 5; i++ {
-				req := &resource_manager.ServiceTypeInstance{
-					ProviderName: "test-provider",
-					Spec:         map[string]interface{}{"cpu": i + 1},
-				}
-				_, err := instanceService.CreateInstance(ctx, req, nil)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			maxPageSize := 2
-			result, err := instanceService.ListInstances(ctx, nil, &maxPageSize, nil)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(*result.Instances).To(HaveLen(2))
-			Expect(result.NextPageToken).NotTo(BeNil())
-			Expect(*result.NextPageToken).NotTo(BeEmpty())
-		})
-
-		It("uses page token to fetch next page", func() {
-			// Create multiple instances
-			for i := 0; i < 5; i++ {
-				req := &resource_manager.ServiceTypeInstance{
-					ProviderName: "test-provider",
-					Spec:         map[string]interface{}{"cpu": i + 1},
-				}
-				_, err := instanceService.CreateInstance(ctx, req, nil)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			// Get first page
-			maxPageSize := 2
-			firstPage, err := instanceService.ListInstances(ctx, nil, &maxPageSize, nil)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(*firstPage.Instances).To(HaveLen(2))
-			Expect(firstPage.NextPageToken).NotTo(BeNil())
-
-			// Get second page using token
-			secondPage, err := instanceService.ListInstances(ctx, nil, &maxPageSize, firstPage.NextPageToken)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(*secondPage.Instances).To(HaveLen(2))
-			Expect(secondPage.NextPageToken).NotTo(BeNil())
-
-			// Verify instances are different
-			firstIDs := make(map[string]bool)
-			for _, inst := range *firstPage.Instances {
-				firstIDs[*inst.Id] = true
-			}
-			for _, inst := range *secondPage.Instances {
-				Expect(firstIDs[*inst.Id]).To(BeFalse(), "Instance should not appear in both pages")
-			}
-		})
-
-		It("returns no next page token on last page", func() {
-			// Create exactly 3 instances
-			for i := 0; i < 3; i++ {
-				req := &resource_manager.ServiceTypeInstance{
-					ProviderName: "test-provider",
-					Spec:         map[string]interface{}{"cpu": i + 1},
-				}
-				_, err := instanceService.CreateInstance(ctx, req, nil)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			// Get first page with size 2
-			maxPageSize := 2
-			firstPage, err := instanceService.ListInstances(ctx, nil, &maxPageSize, nil)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(*firstPage.Instances).To(HaveLen(2))
-			Expect(firstPage.NextPageToken).NotTo(BeNil())
-
-			// Get second page (last page with 1 item)
-			secondPage, err := instanceService.ListInstances(ctx, nil, &maxPageSize, firstPage.NextPageToken)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(*secondPage.Instances).To(HaveLen(1))
-			Expect(secondPage.NextPageToken).To(BeNil())
 		})
 	})
 

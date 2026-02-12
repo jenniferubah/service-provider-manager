@@ -103,7 +103,7 @@ var _ = Describe("ServiceTypeInstance Store", func() {
 			result, err := s.List(ctx, nil)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Instances).To(HaveLen(3))
-			Expect(result.NextPageToken).To(BeEmpty())
+			Expect(result.NextPageToken).To(BeNil())
 		})
 
 		It("filters by provider name", func() {
@@ -120,7 +120,7 @@ var _ = Describe("ServiceTypeInstance Store", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Instances).To(HaveLen(2))
-			Expect(result.NextPageToken).NotTo(BeEmpty())
+			Expect(result.NextPageToken).NotTo(BeNil())
 		})
 
 		It("returns next page using page token", func() {
@@ -130,16 +130,16 @@ var _ = Describe("ServiceTypeInstance Store", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(firstPage.Instances).To(HaveLen(2))
-			Expect(firstPage.NextPageToken).NotTo(BeEmpty())
+			Expect(firstPage.NextPageToken).NotTo(BeNil())
 
 			// Get second page using token
 			secondPage, err := s.List(ctx, &rmstore.ServiceTypeInstanceListOptions{
 				PageSize:  2,
-				PageToken: &firstPage.NextPageToken,
+				PageToken: firstPage.NextPageToken,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(secondPage.Instances).To(HaveLen(1))
-			Expect(secondPage.NextPageToken).To(BeEmpty())
+			Expect(secondPage.NextPageToken).To(BeNil())
 		})
 	})
 
